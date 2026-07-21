@@ -67,6 +67,13 @@ export default function LegalPage() {
             контакт для обращений по вопросам обработки данных — заполняется
             юристом или владельцем клуба.]
           </p>
+          <p className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4 text-xs text-[var(--muted-foreground)]">
+            Технический момент для владельца сайта: согласно ч. 5 ст. 18
+            152-ФЗ, база данных с персональными данными граждан РФ (в том
+            числе файл <code>data.sqlite</code> с регистрациями на турниры)
+            должна физически размещаться на сервере на территории России —
+            учитывайте это при выборе хостинга для продакшена.
+          </p>
 
           <h2 className="font-display mt-4 text-lg font-medium text-[var(--foreground)]">
             3. Файлы cookie
