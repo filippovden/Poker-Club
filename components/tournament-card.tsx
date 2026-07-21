@@ -91,7 +91,7 @@ export function TournamentCard({
           onClick={() => setDialogOpen(true)}
           className="w-full"
         >
-          {isFull ? "Мест нет" : "Зарегистрироваться"}
+          {isFull ? "Мест нет" : "Подать заявку"}
         </Button>
       )}
 

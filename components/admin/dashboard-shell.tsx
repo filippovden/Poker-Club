@@ -227,7 +227,7 @@ export function DashboardShell({
                       {t.status === "upcoming" ? "Скоро" : t.status === "live" ? "Live" : "Завершён"}
                     </Badge>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{t.title}</p>
+                      <p className="truncate text-sm font-medium" title={t.title}>{t.title}</p>
                       <p className="truncate text-xs text-[var(--muted-foreground)]">
                         {t.format} · {new Date(t.startsAt).toLocaleString("ru-RU")}
                       </p>
@@ -240,7 +240,8 @@ export function DashboardShell({
                         setRegistrationsDialogOpen(true);
                       }}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
-                      aria-label="Участники"
+                      aria-label="Заявки"
+                      title="Заявки"
                     >
                       <Users className="h-3.5 w-3.5" />
                     </button>
@@ -282,7 +283,7 @@ export function DashboardShell({
                   className="flex items-center justify-between gap-4 border-b border-[var(--border)] px-5 py-3.5 last:border-0 hover:bg-[var(--surface-2)]/50"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{item.title}</p>
+                    <p className="truncate text-sm font-medium" title={item.title}>{item.title}</p>
                     <p className="truncate text-xs text-[var(--muted-foreground)]">
                       {new Date(item.publishedAt).toLocaleDateString("ru-RU")}
                     </p>

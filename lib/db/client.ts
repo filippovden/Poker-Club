@@ -49,6 +49,7 @@ sqlite.exec(`
     phone TEXT NOT NULL,
     email TEXT,
     cancel_token TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'pending',
     created_at TEXT NOT NULL DEFAULT (current_timestamp)
   );
 `);
@@ -60,6 +61,15 @@ const tournamentColumns = sqlite
   .all() as { name: string }[];
 if (!tournamentColumns.some((c) => c.name === "max_players")) {
   sqlite.exec("ALTER TABLE tournaments ADD COLUMN max_players INTEGER;");
+}
+
+// registrations.status was added after initial release (pending/approved/
+// rejected application flow) — backfill for existing databases.
+const registrationColumns = sqlite
+  .prepare("PRAGMA table_info(registrations)")
+  .all() as { name: string }[];
+if (!registrationColumns.some((c) => c.name === "status")) {
+  sqlite.exec("ALTER TABLE registrations ADD COLUMN status TEXT NOT NULL DEFAULT 'pending';");
 }
 
 export const db = drizzle(

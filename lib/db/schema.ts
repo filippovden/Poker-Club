@@ -29,6 +29,7 @@ export const registrations = sqliteTable("registrations", {
   phone: text("phone").notNull(),
   email: text("email"),
   cancelToken: text("cancel_token").notNull().unique(),
+  status: text("status").notNull().default("pending"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),

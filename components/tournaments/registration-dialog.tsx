@@ -11,6 +11,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -59,15 +60,16 @@ export function RegistrationDialog({
         {state.success ? (
           <>
             <DialogHeader>
-              <DialogTitle>Вы зарегистрированы</DialogTitle>
+              <DialogTitle>Заявка отправлена</DialogTitle>
               <DialogDescription>
-                Ждём вас на турнире «{tournamentTitle}».
+                Организаторы рассмотрят заявку и свяжутся с вами, чтобы подтвердить
+                участие в «{tournamentTitle}».
               </DialogDescription>
             </DialogHeader>
             {cancelUrl && (
               <div className="flex flex-col gap-2">
                 <p className="text-sm text-[var(--muted-foreground)]">
-                  Сохраните ссылку, если понадобится отменить регистрацию:
+                  Сохраните ссылку, если понадобится отозвать заявку:
                 </p>
                 <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-2">
                   <code className="flex-1 truncate text-xs">{cancelUrl}</code>
@@ -89,7 +91,7 @@ export function RegistrationDialog({
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Регистрация на турнир</DialogTitle>
+              <DialogTitle>Заявка на турнир</DialogTitle>
               <DialogDescription>«{tournamentTitle}»</DialogDescription>
             </DialogHeader>
 
@@ -130,7 +132,7 @@ export function RegistrationDialog({
               </div>
 
               <label className="flex items-start gap-2.5 text-xs leading-relaxed text-[var(--muted-foreground)]">
-                <input type="checkbox" name="consent" required className="mt-0.5" />
+                <Checkbox name="consent" required className="mt-0.5" />
                 <span>
                   Даю согласие на обработку персональных данных в соответствии с{" "}
                   <Link href="/legal" target="_blank" className="underline hover:text-[var(--foreground)]">
@@ -140,14 +142,14 @@ export function RegistrationDialog({
                 </span>
               </label>
               <label className="flex items-start gap-2.5 text-xs leading-relaxed text-[var(--muted-foreground)]">
-                <input type="checkbox" name="age" required className="mt-0.5" />
+                <Checkbox name="age" required className="mt-0.5" />
                 <span>Подтверждаю, что мне исполнилось 18 лет.</span>
               </label>
 
               {state.error && <p className="text-sm text-[var(--danger)]">{state.error}</p>}
 
               <Button type="submit" disabled={pending} className="mt-2">
-                {pending ? "Отправляем…" : "Зарегистрироваться"}
+                {pending ? "Отправляем…" : "Отправить заявку"}
               </Button>
             </form>
           </>

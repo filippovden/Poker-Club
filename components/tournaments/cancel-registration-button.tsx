@@ -18,8 +18,8 @@ export function CancelRegistrationButton({ token }: { token: string }) {
   if (result?.success) {
     return (
       <p className="text-sm text-[var(--muted-foreground)]">
-        Регистрация отменена. Если передумаете — вы всегда можете
-        зарегистрироваться заново на странице турниров.
+        Заявка отозвана. Если передумаете — вы всегда можете подать заявку
+        заново на странице турниров.
       </p>
     );
   }
@@ -27,7 +27,7 @@ export function CancelRegistrationButton({ token }: { token: string }) {
   return (
     <div className="flex flex-col gap-3">
       <Button variant="secondary" disabled={pending} onClick={handleCancel}>
-        {pending ? "Отменяем…" : "Отменить регистрацию"}
+        {pending ? "Отзываем…" : "Отозвать заявку"}
       </Button>
       {result?.error && <p className="text-sm text-[var(--danger)]">{result.error}</p>}
     </div>

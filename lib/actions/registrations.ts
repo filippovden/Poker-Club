@@ -68,12 +68,12 @@ export async function registerForTournamentAction(
     return { error: "Регистрация на этот турнир уже закрыта" };
   }
 
-  const [{ value: registeredCount }] = await db
+  const [{ value: approvedCount }] = await db
     .select({ value: count() })
     .from(registrations)
-    .where(eq(registrations.tournamentId, tournamentId));
+    .where(and(eq(registrations.tournamentId, tournamentId), eq(registrations.status, "approved")));
 
-  if (tournament.maxPlayers && registeredCount >= tournament.maxPlayers) {
+  if (tournament.maxPlayers && approvedCount >= tournament.maxPlayers) {
     return { error: "Все места заняты" };
   }
 
@@ -83,11 +83,17 @@ export async function registerForTournamentAction(
   const [existing] = await db
     .select()
     .from(registrations)
-    .where(and(eq(registrations.tournamentId, tournamentId), or(...duplicateConditions)))
+    .where(
+      and(
+        eq(registrations.tournamentId, tournamentId),
+        or(...duplicateConditions),
+        or(eq(registrations.status, "pending"), eq(registrations.status, "approved")),
+      ),
+    )
     .limit(1);
 
   if (existing) {
-    return { error: "Вы уже зарегистрированы на этот турнир" };
+    return { error: "Вы уже подавали заявку на этот турнир" };
   }
 
   const cancelToken = randomUUID();
@@ -98,6 +104,7 @@ export async function registerForTournamentAction(
     phone: parsed.data.phone,
     email: parsed.data.email || null,
     cancelToken,
+    status: "pending",
   });
 
   revalidatePath("/tournaments");
@@ -137,6 +144,16 @@ export async function adminListRegistrations(tournamentId: number) {
 export async function adminRemoveRegistration(id: number) {
   await requireAdmin();
   await db.delete(registrations).where(eq(registrations.id, id));
+  revalidatePath("/tournaments");
+  revalidatePath("/admin/dashboard");
+}
+
+export async function adminSetRegistrationStatus(
+  id: number,
+  status: "pending" | "approved" | "rejected",
+) {
+  await requireAdmin();
+  await db.update(registrations).set({ status }).where(eq(registrations.id, id));
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
 }
