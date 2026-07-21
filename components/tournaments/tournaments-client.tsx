@@ -36,37 +36,46 @@ export function TournamentsClient({
 
   return (
     <div>
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {FORMATS.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFormat(format === f ? null : f)}
-              className={cn(
-                "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
-                format === f
-                  ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)]"
-                  : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
-              )}
-            >
-              {f}
-            </button>
-          ))}
-          <span className="mx-1 self-center text-[var(--border)]">|</span>
-          {STATUSES.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => setStatus(status === s.value ? null : s.value)}
-              className={cn(
-                "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
-                status === s.value
-                  ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)]"
-                  : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
-              )}
-            >
-              {s.label}
-            </button>
-          ))}
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--muted-foreground)]">
+              Формат
+            </span>
+            {FORMATS.map((f) => (
+              <button
+                key={f}
+                onClick={() => setFormat(format === f ? null : f)}
+                className={cn(
+                  "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                  format === f
+                    ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)]"
+                    : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
+                )}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--muted-foreground)]">
+              Статус
+            </span>
+            {STATUSES.map((s) => (
+              <button
+                key={s.value}
+                onClick={() => setStatus(status === s.value ? null : s.value)}
+                className={cn(
+                  "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                  status === s.value
+                    ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)]"
+                    : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex gap-1 rounded-full border border-[var(--border)] p-1">

@@ -1,15 +1,33 @@
 import Link from "next/link";
 import { LogoMark } from "./logo-mark";
+import { SITE_CONTENT } from "@/lib/content";
 
 export function Footer() {
   const year = new Date().getFullYear();
+  const telegramHandle = SITE_CONTENT.contacts.telegram.replace(/^@/, "");
 
   return (
     <footer className="border-t border-[var(--border)] bg-[var(--background)]">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-12">
-        <div className="flex items-center gap-2.5">
-          <LogoMark className="h-6 w-6 text-[var(--foreground)]" />
-          <span className="font-display text-sm font-medium">Lockdown Poker</span>
+        <div className="flex flex-wrap items-start justify-between gap-8">
+          <div className="flex items-center gap-2.5">
+            <LogoMark className="h-6 w-6 text-[var(--foreground)]" />
+            <span className="font-display text-sm font-medium">Lockdown Poker</span>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--muted-foreground)]">
+              Анонсы турниров
+            </span>
+            <a
+              href={`https://t.me/${telegramHandle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-[var(--foreground)] hover:text-[var(--accent)]"
+            >
+              Telegram-канал клуба {SITE_CONTENT.contacts.telegram}
+            </a>
+          </div>
         </div>
 
         <nav className="flex flex-wrap gap-6 text-sm text-[var(--muted-foreground)]">
@@ -24,6 +42,14 @@ export function Footer() {
           </Link>
           <a href="mailto:info@lockdownpoker.club" className="hover:text-[var(--foreground)]">
             info@lockdownpoker.club
+          </a>
+          <a
+            href={`https://t.me/${telegramHandle}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-[var(--foreground)]"
+          >
+            Telegram
           </a>
         </nav>
 

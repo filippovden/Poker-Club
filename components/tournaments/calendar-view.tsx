@@ -85,7 +85,8 @@ export function CalendarView({
         {cells.map((date, i) => {
           if (!date) return <div key={i} />;
           const key = dayKey(date);
-          const has = byDay.has(key);
+          const dayTournaments = byDay.get(key);
+          const dayCount = dayTournaments?.length ?? 0;
           const isSelected = selectedDay === key;
           const isToday = key === dayKey(new Date());
 
@@ -93,6 +94,7 @@ export function CalendarView({
             <button
               key={key}
               onClick={() => setSelectedDay(isSelected ? null : key)}
+              title={dayCount > 0 ? `Турниров в этот день: ${dayCount}` : undefined}
               className={cn(
                 "relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm transition-colors",
                 isSelected
@@ -103,13 +105,17 @@ export function CalendarView({
               )}
             >
               {date.getDate()}
-              {has && (
+              {dayCount > 0 && (
                 <span
                   className={cn(
-                    "absolute bottom-1.5 h-1 w-1 rounded-full",
-                    isSelected ? "bg-[var(--accent-foreground)]" : "bg-[var(--accent)]",
+                    "absolute bottom-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[9px] font-semibold leading-none",
+                    isSelected
+                      ? "bg-[var(--accent-foreground)] text-[var(--accent)]"
+                      : "bg-[var(--accent)] text-[var(--accent-foreground)]",
                   )}
-                />
+                >
+                  {dayCount}
+                </span>
               )}
             </button>
           );

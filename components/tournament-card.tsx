@@ -44,7 +44,7 @@ export function TournamentCard({
 
   return (
     <div
-      className={`group relative flex flex-col gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 transition-all duration-300 hover:border-[var(--accent)]/40 hover:-translate-y-0.5 ${isPast ? "opacity-60" : ""}`}
+      className={`group relative flex flex-col gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)]/70 p-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] backdrop-blur-md transition-all duration-300 hover:border-[var(--accent)]/40 hover:-translate-y-0.5 ${isPast ? "opacity-60" : ""}`}
     >
       <div className="flex items-center justify-between">
         <Badge variant={tournament.status === "live" ? "live" : "default"}>
