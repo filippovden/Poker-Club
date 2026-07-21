@@ -52,5 +52,6 @@ npm run build
 ```
 
 Собранный фронтенд появится в `dist/`. Бэкенд (`server/`) для продакшена
-запускается отдельно: `node server/index.js` (задайте `PORT`,
-`JWT_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` через `.env`).
+запускается отдельно: `node --experimental-sqlite server/index.js`
+(задайте `PORT`, `JWT_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` через
+`.env`).
