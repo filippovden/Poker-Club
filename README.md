@@ -1,16 +1,56 @@
-# React + Vite
+# Lockdown Poker
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Сайт покерного клуба: витрина (турниры, новости, о клубе) + панель
+администратора для организаторов.
 
-Currently, two official plugins are available:
+## Стек
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Фронтенд:** React 19, Vite, React Router, `motion` (Framer Motion), plain CSS
+- **Бэкенд:** Node.js, Express, встроенный `node:sqlite` (без нативной компиляции), JWT-авторизация
 
-## React Compiler
+## Запуск локально
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Требуется Node.js 22+.
 
-## Expanding the Oxlint configuration
+```bash
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+Откроется:
+- сайт — http://localhost:5173
+- API — http://localhost:3001
+
+Команда `npm run dev` запускает фронтенд и бэкенд одновременно.
+
+## Панель организатора
+
+Доступна по адресу `/admin/login`.
+
+При первом запуске бэкенд автоматически создаёт администратора со
+стандартными данными:
+
+- логин: `admin`
+- пароль: `admin123`
+
+**Обязательно смените их** для реального использования — создайте файл
+`.env` (по образцу `.env.example`) со своими `ADMIN_USERNAME`,
+`ADMIN_PASSWORD` и `JWT_SECRET`, затем удалите `server/data.sqlite` и
+перезапустите сервер, чтобы админ пересоздался с новыми данными.
+
+## Структура проекта
+
+```
+src/            фронтенд (страницы, компоненты)
+server/         бэкенд (Express, SQLite, роуты API)
+```
+
+## Сборка для продакшена
+
+```bash
+npm run build
+```
+
+Собранный фронтенд появится в `dist/`. Бэкенд (`server/`) для продакшена
+запускается отдельно: `node server/index.js` (задайте `PORT`,
+`JWT_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` через `.env`).
