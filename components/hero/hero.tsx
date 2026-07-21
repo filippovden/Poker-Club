@@ -17,7 +17,7 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 const VIDEO_URL =
   "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260508_215831_c6a8989c-d716-4d8d-8745-e972a2eec711.mp4";
 
-const HEADLINE_LINE_1 = ["Турниры", "без", "границ."];
+const HEADLINE_LINE_1 = ["Честная", "игра."];
 const HEADLINE_LINE_2 = ["Только", "для", "своих."];
 
 const container = {
@@ -67,6 +67,7 @@ export function Hero() {
         <video
           className="h-full w-full object-cover opacity-70"
           src={VIDEO_URL}
+          poster="/hero-poster.jpg"
           autoPlay
           muted
           loop

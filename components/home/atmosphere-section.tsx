@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/reveal";
+import { DecorativeScene } from "@/components/decorative-scene";
 import { SITE_CONTENT } from "@/lib/content";
 
 export function AtmosphereSection() {
@@ -18,20 +19,7 @@ export function AtmosphereSection() {
         </Reveal>
 
         <Reveal delay={0.15}>
-          <div className="grain relative aspect-[4/3] overflow-hidden rounded-2xl border border-[var(--border)]">
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "radial-gradient(120% 120% at 20% 20%, rgba(201,162,39,0.18), transparent 55%), linear-gradient(160deg, #1b1815 0%, #0a0908 100%)",
-              }}
-            />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="font-display text-6xl font-medium text-white/10">
-                LP
-              </span>
-            </div>
-          </div>
+          <DecorativeScene className="aspect-[4/3] rounded-2xl border border-[var(--border)]" />
         </Reveal>
       </div>
     </section>

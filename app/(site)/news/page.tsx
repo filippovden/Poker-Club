@@ -4,6 +4,7 @@ import { desc } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { news } from "@/lib/db/schema";
 import { Reveal, RevealGroup, RevealItem } from "@/components/reveal";
+import { DecorativeScene } from "@/components/decorative-scene";
 
 export const metadata: Metadata = {
   title: "Новости",
@@ -45,14 +46,17 @@ export default async function NewsPage() {
             href={`/news/${featured.slug}`}
             className="group mb-16 grid gap-6 border-b border-[var(--border)] pb-16 md:grid-cols-2 md:items-center md:gap-12"
           >
-            <div className="grain relative aspect-[16/10] overflow-hidden rounded-2xl border border-[var(--border)]">
-              <div
-                className="absolute inset-0 transition-transform duration-700 group-hover:scale-105"
-                style={{
-                  background:
-                    "radial-gradient(120% 120% at 80% 20%, rgba(201,162,39,0.2), transparent 55%), linear-gradient(160deg, #1b1815 0%, #0a0908 100%)",
-                }}
-              />
+            <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-[var(--border)]">
+              {featured.coverImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={featured.coverImage}
+                  alt=""
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+              ) : (
+                <DecorativeScene className="h-full w-full transition-transform duration-700 group-hover:scale-105" />
+              )}
             </div>
             <div>
               <span className="text-xs text-[var(--muted-foreground)]">

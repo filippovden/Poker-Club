@@ -62,6 +62,15 @@ export default async function NewsArticlePage({
           {article.title}
         </h1>
 
+        {article.coverImage && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={article.coverImage}
+            alt=""
+            className="mt-8 aspect-[16/10] w-full rounded-2xl border border-[var(--border)] object-cover"
+          />
+        )}
+
         <div className="mt-10 flex flex-col gap-5 text-base leading-relaxed text-[var(--foreground)]/85">
           {article.content
             .split(/\n+/)

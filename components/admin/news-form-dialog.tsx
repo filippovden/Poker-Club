@@ -50,6 +50,17 @@ export function NewsFormDialog({
           </div>
 
           <div className="flex flex-col gap-2">
+            <Label htmlFor="news-cover">Обложка (ссылка на изображение, необязательно)</Label>
+            <Input
+              id="news-cover"
+              name="coverImage"
+              type="url"
+              placeholder="https://…"
+              defaultValue={article?.coverImage ?? ""}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
             <Label htmlFor="news-content">Текст новости</Label>
             <Textarea
               id="news-content"
