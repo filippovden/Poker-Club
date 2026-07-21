@@ -6,6 +6,13 @@ async function seedAdmin() {
   const existing = await db.select().from(admins).limit(1);
   if (existing.length > 0) return;
 
+  if (process.env.NODE_ENV === "production" && !process.env.ADMIN_PASSWORD) {
+    throw new Error(
+      "[seed] ADMIN_PASSWORD не задан в production. Укажите ADMIN_USERNAME и ADMIN_PASSWORD " +
+        "в переменных окружения перед запуском — сайт не будет использовать пароль по умолчанию.",
+    );
+  }
+
   const username = process.env.ADMIN_USERNAME || "admin";
   const password = process.env.ADMIN_PASSWORD || "admin123";
   const passwordHash = await bcrypt.hash(password, 10);

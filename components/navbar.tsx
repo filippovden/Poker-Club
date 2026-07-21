@@ -47,13 +47,13 @@ export function Navbar() {
         className={cn(
           "mx-auto flex max-w-6xl items-center justify-between px-4 transition-all duration-500 sm:px-6",
           scrolled
-            ? "mt-3 rounded-full border border-[var(--border)] bg-[var(--surface)]/70 py-2.5 px-5 backdrop-blur-xl shadow-lg shadow-black/20"
-            : "mt-0 py-5",
+            ? "mt-3 rounded-full border border-white/10 bg-black/60 py-2.5 px-5 backdrop-blur-xl shadow-lg shadow-black/30"
+            : "mt-0 bg-gradient-to-b from-black/55 via-black/15 to-transparent py-5",
         )}
       >
         <Link href="/" className="flex items-center gap-2.5">
-          <LogoMark className="h-6 w-6 text-[var(--foreground)]" />
-          <span className="font-display text-sm font-medium tracking-tight">
+          <LogoMark className="h-6 w-6 text-white" />
+          <span className="font-display text-sm font-medium tracking-tight text-white">
             Lockdown Poker
           </span>
         </Link>
@@ -64,8 +64,8 @@ export function Navbar() {
               key={link.href}
               href={link.href}
               className={cn(
-                "text-sm font-medium text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]",
-                pathname.startsWith(link.href) && "text-[var(--foreground)]",
+                "text-sm font-medium text-white/70 transition-colors hover:text-white",
+                pathname.startsWith(link.href) && "text-white",
               )}
             >
               {link.label}
@@ -82,7 +82,7 @@ export function Navbar() {
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Закрыть меню" : "Открыть меню"}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] text-[var(--foreground)] transition-colors hover:bg-[var(--surface-2)] md:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white transition-colors hover:bg-white/10 md:hidden"
           >
             {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
@@ -96,19 +96,19 @@ export function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="mx-4 mt-2 flex flex-col gap-1 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-xl md:hidden"
+            className="mx-4 mt-2 flex flex-col gap-1 rounded-2xl border border-white/10 bg-black/85 p-3 shadow-xl backdrop-blur-xl md:hidden"
           >
             {LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-lg px-4 py-2.5 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--surface-2)]"
+                className="rounded-lg px-4 py-2.5 text-sm font-medium text-white hover:bg-white/10"
               >
                 {link.label}
               </Link>
             ))}
             <div className="mt-1 flex items-center justify-between px-4 py-1 sm:hidden">
-              <span className="text-xs text-[var(--muted-foreground)]">Тема и звук</span>
+              <span className="text-xs text-white/50">Тема и звук</span>
               <div className="flex gap-2">
                 <SoundToggle />
                 <ThemeToggle />

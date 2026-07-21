@@ -146,7 +146,7 @@ html.has-custom-cursor button {
 }
 
 html.has-custom-cursor .custom-cursor {
-  display: block;
+  display: flex;
 }
 
 @media (prefers-reduced-motion: reduce) {

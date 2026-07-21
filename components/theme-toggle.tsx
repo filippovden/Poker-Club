@@ -15,7 +15,8 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label="Переключить тему"
-      className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] text-[var(--foreground)] transition-colors hover:bg-[var(--surface-2)]"
+      title="Переключить тему"
+      className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white transition-colors hover:bg-white/10"
     >
       <Sun className="theme-icon-sun h-4 w-4" />
       <Moon className="theme-icon-moon h-4 w-4" />
