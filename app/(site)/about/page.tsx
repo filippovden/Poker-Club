@@ -75,6 +75,11 @@ export default function AboutPage() {
           <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
             Контакты
           </h2>
+          <p className="mt-4 max-w-lg leading-relaxed text-[var(--foreground)]/85">
+            Хотите присоединиться или узнать о ближайшем турнире? Напишите
+            нам в любой из каналов ниже — ответим и расскажем, как попасть
+            в клуб.
+          </p>
           <div className="mt-6 flex flex-col divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">
             <a
               href={`mailto:${SITE_CONTENT.contacts.email}`}
