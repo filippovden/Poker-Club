@@ -20,6 +20,18 @@ const VIDEO_URL =
 const HEADLINE_LINE_1 = ["Честная", "игра."];
 const HEADLINE_LINE_2 = ["Только", "для", "своих."];
 
+const PARTICLES = [
+  { left: "8%", size: 3, duration: 14, delay: 0, opacity: 0.5 },
+  { left: "18%", size: 2, duration: 18, delay: 3, opacity: 0.35 },
+  { left: "29%", size: 4, duration: 16, delay: 6, opacity: 0.4 },
+  { left: "41%", size: 2, duration: 20, delay: 1, opacity: 0.3 },
+  { left: "54%", size: 3, duration: 15, delay: 8, opacity: 0.45 },
+  { left: "63%", size: 2, duration: 19, delay: 4, opacity: 0.3 },
+  { left: "74%", size: 4, duration: 17, delay: 10, opacity: 0.4 },
+  { left: "85%", size: 3, duration: 13, delay: 2, opacity: 0.5 },
+  { left: "92%", size: 2, duration: 21, delay: 7, opacity: 0.3 },
+];
+
 const container = {
   hidden: {},
   show: {
@@ -72,8 +84,26 @@ export function Hero() {
           muted
           loop
           playsInline
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
         />
       </motion.div>
+
+      <motion.div
+        aria-hidden="true"
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(60% 55% at 50% 78%, rgba(201,162,39,0.22) 0%, rgba(201,162,39,0.08) 35%, transparent 65%)",
+        }}
+        animate={
+          prefersReducedMotion
+            ? undefined
+            : { opacity: [0.6, 1, 0.6] }
+        }
+        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+      />
 
       <div
         className="absolute inset-0"
@@ -83,6 +113,24 @@ export function Hero() {
         }}
       />
       <div className="grain absolute inset-0" />
+
+      <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
+        {PARTICLES.map((p, i) => (
+          <span
+            key={i}
+            className="hero-particle"
+            style={{
+              left: p.left,
+              bottom: "-10%",
+              width: p.size,
+              height: p.size,
+              animationDuration: `${p.duration}s`,
+              animationDelay: `${p.delay}s`,
+              ["--particle-opacity" as string]: p.opacity,
+            }}
+          />
+        ))}
+      </div>
 
       <motion.div
         style={{ opacity: contentOpacity }}
