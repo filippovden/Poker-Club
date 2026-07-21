@@ -55,7 +55,10 @@ export default async function NewsPage() {
                   className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
               ) : (
-                <DecorativeScene className="h-full w-full transition-transform duration-700 group-hover:scale-105" />
+                <DecorativeScene
+                  variant="cards"
+                  className="h-full w-full transition-transform duration-700 group-hover:scale-105"
+                />
               )}
             </div>
             <div>
