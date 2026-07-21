@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TournamentCard } from "@/components/tournament-card";
 import { cn } from "@/lib/utils";
 import type { Tournament } from "@/lib/db/schema";
+import type { SeatAssignment } from "@/lib/db/seat-assignments";
 
 const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const MONTHS = [
@@ -19,9 +20,11 @@ function dayKey(date: Date) {
 export function CalendarView({
   tournaments,
   registrationCounts = {},
+  seatAssignments = {},
 }: {
   tournaments: Tournament[];
   registrationCounts?: Record<number, number>;
+  seatAssignments?: Record<number, SeatAssignment[]>;
 }) {
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
@@ -125,7 +128,12 @@ export function CalendarView({
       {selectedTournaments.length > 0 && (
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {selectedTournaments.map((t) => (
-            <TournamentCard key={t.id} tournament={t} registeredCount={registrationCounts[t.id]} />
+            <TournamentCard
+              key={t.id}
+              tournament={t}
+              registeredCount={registrationCounts[t.id]}
+              occupiedSeats={seatAssignments[t.id]}
+            />
           ))}
         </div>
       )}

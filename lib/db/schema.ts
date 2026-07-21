@@ -9,6 +9,8 @@ export const tournaments = sqliteTable("tournaments", {
   buyIn: integer("buy_in"),
   description: text("description"),
   maxPlayers: integer("max_players"),
+  tableCount: integer("table_count"),
+  seatsPerTable: integer("seats_per_table"),
   status: text("status", { enum: ["upcoming", "live", "completed"] })
     .notNull()
     .default("upcoming"),
@@ -30,6 +32,8 @@ export const registrations = sqliteTable("registrations", {
   email: text("email"),
   cancelToken: text("cancel_token").notNull().unique(),
   status: text("status").notNull().default("pending"),
+  tableNumber: integer("table_number"),
+  seatNumber: integer("seat_number"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),

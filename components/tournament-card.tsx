@@ -3,8 +3,17 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { RegistrationDialog } from "@/components/tournaments/registration-dialog";
+import { SeatingGrid } from "@/components/tournaments/seating-grid";
 import type { Tournament } from "@/lib/db/schema";
+import type { SeatAssignment } from "@/lib/db/seat-assignments";
 
 const FORMAT_LABELS: Record<string, string> = {
   NLH: "No-Limit Hold'em",
@@ -32,15 +41,19 @@ function formatDate(iso: string) {
 export function TournamentCard({
   tournament,
   registeredCount = 0,
+  occupiedSeats = [],
 }: {
   tournament: Tournament;
   registeredCount?: number;
+  occupiedSeats?: SeatAssignment[];
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [seatsOpen, setSeatsOpen] = useState(false);
   const isPast = tournament.status === "completed";
   const spotsLeft =
     tournament.maxPlayers != null ? tournament.maxPlayers - registeredCount : null;
   const isFull = spotsLeft !== null && spotsLeft <= 0;
+  const hasTables = tournament.tableCount != null && tournament.seatsPerTable != null;
 
   return (
     <div
@@ -78,6 +91,22 @@ export function TournamentCard({
         </span>
       </div>
 
+      {hasTables && (
+        <button
+          type="button"
+          onClick={() => setSeatsOpen(true)}
+          className="flex items-center justify-between rounded-lg border border-[var(--border)] px-3 py-2 text-left transition-colors hover:border-[var(--accent)]/40"
+        >
+          <SeatingGrid
+            tableCount={tournament.tableCount!}
+            seatsPerTable={tournament.seatsPerTable!}
+            occupied={occupiedSeats}
+            size="compact"
+          />
+          <span className="ml-3 shrink-0 text-xs text-[var(--muted-foreground)]">Места</span>
+        </button>
+      )}
+
       {spotsLeft !== null && !isPast && (
         <span className={`text-xs ${isFull ? "text-[var(--danger)]" : "text-[var(--muted-foreground)]"}`}>
           {isFull ? "Все места заняты" : `Осталось мест: ${spotsLeft}`}
@@ -101,6 +130,23 @@ export function TournamentCard({
         tournamentId={tournament.id}
         tournamentTitle={tournament.title}
       />
+
+      {hasTables && (
+        <Dialog open={seatsOpen} onOpenChange={setSeatsOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Рассадка</DialogTitle>
+              <DialogDescription>«{tournament.title}»</DialogDescription>
+            </DialogHeader>
+            <SeatingGrid
+              tableCount={tournament.tableCount!}
+              seatsPerTable={tournament.seatsPerTable!}
+              occupied={occupiedSeats}
+              size="full"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

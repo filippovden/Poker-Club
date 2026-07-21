@@ -7,6 +7,7 @@ import { RevealGroup, RevealItem } from "@/components/reveal";
 import { CalendarView } from "./calendar-view";
 import { cn } from "@/lib/utils";
 import type { Tournament } from "@/lib/db/schema";
+import type { SeatAssignment } from "@/lib/db/seat-assignments";
 
 const FORMATS = ["NLH", "PLO", "MTT"] as const;
 const STATUSES = [
@@ -18,9 +19,11 @@ const STATUSES = [
 export function TournamentsClient({
   tournaments,
   registrationCounts = {},
+  seatAssignments = {},
 }: {
   tournaments: Tournament[];
   registrationCounts?: Record<number, number>;
+  seatAssignments?: Record<number, SeatAssignment[]>;
 }) {
   const [format, setFormat] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -117,12 +120,20 @@ export function TournamentsClient({
         <RevealGroup className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((t) => (
             <RevealItem key={t.id}>
-              <TournamentCard tournament={t} registeredCount={registrationCounts[t.id]} />
+              <TournamentCard
+                tournament={t}
+                registeredCount={registrationCounts[t.id]}
+                occupiedSeats={seatAssignments[t.id]}
+              />
             </RevealItem>
           ))}
         </RevealGroup>
       ) : (
-        <CalendarView tournaments={filtered} registrationCounts={registrationCounts} />
+        <CalendarView
+          tournaments={filtered}
+          registrationCounts={registrationCounts}
+          seatAssignments={seatAssignments}
+        />
       )}
     </div>
   );

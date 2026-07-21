@@ -9,6 +9,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,6 +56,7 @@ function TournamentFormFields({
   const [status, setStatus] = useState<TournamentFormValues["status"]>(
     tournament?.status ?? "upcoming",
   );
+  const [useTables, setUseTables] = useState(tournament?.tableCount != null);
 
   return (
     <form
@@ -122,15 +124,50 @@ function TournamentFormFields({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="maxPlayers">Лимит мест (пусто = без лимита)</Label>
-        <Input
-          id="maxPlayers"
-          name="maxPlayers"
-          type="number"
-          min={1}
-          defaultValue={tournament?.maxPlayers ?? ""}
-        />
+      <div className="flex flex-col gap-3 rounded-lg border border-[var(--border)] p-3">
+        <label className="flex items-center gap-2.5 text-sm font-medium">
+          <Checkbox
+            checked={useTables}
+            onCheckedChange={(v) => setUseTables(v === true)}
+          />
+          Рассадка по столам (сетка мест)
+        </label>
+
+        {useTables ? (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="tableCount">Столов</Label>
+              <Input
+                id="tableCount"
+                name="tableCount"
+                type="number"
+                min={1}
+                defaultValue={tournament?.tableCount ?? 5}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="seatsPerTable">Мест за столом</Label>
+              <Input
+                id="seatsPerTable"
+                name="seatsPerTable"
+                type="number"
+                min={1}
+                defaultValue={tournament?.seatsPerTable ?? 9}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="maxPlayers">Лимит мест (пусто = без лимита)</Label>
+            <Input
+              id="maxPlayers"
+              name="maxPlayers"
+              type="number"
+              min={1}
+              defaultValue={tournament?.maxPlayers ?? ""}
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">

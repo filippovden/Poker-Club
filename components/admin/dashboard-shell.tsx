@@ -83,13 +83,24 @@ export function DashboardShell({
     playClick();
     setTournamentError(undefined);
     setTournamentPending(true);
+    const tableCount = formData.get("tableCount") ? Number(formData.get("tableCount")) : null;
+    const seatsPerTable = formData.get("seatsPerTable")
+      ? Number(formData.get("seatsPerTable"))
+      : null;
     const optimisticItem: Tournament = {
       id: editingTournament?.id ?? -Date.now(),
       title: String(formData.get("title")),
       format: String(formData.get("format")) as Tournament["format"],
       startsAt: new Date(String(formData.get("startsAt"))).toISOString(),
       buyIn: formData.get("buyIn") ? Number(formData.get("buyIn")) : null,
-      maxPlayers: formData.get("maxPlayers") ? Number(formData.get("maxPlayers")) : null,
+      maxPlayers:
+        tableCount != null && seatsPerTable != null
+          ? tableCount * seatsPerTable
+          : formData.get("maxPlayers")
+            ? Number(formData.get("maxPlayers"))
+            : null,
+      tableCount,
+      seatsPerTable,
       description: String(formData.get("description") || "") || null,
       status: String(formData.get("status")) as Tournament["status"],
       createdAt: editingTournament?.createdAt ?? new Date().toISOString(),
@@ -337,6 +348,8 @@ export function DashboardShell({
           onOpenChange={setRegistrationsDialogOpen}
           tournamentId={registrationsTournament.id}
           tournamentTitle={registrationsTournament.title}
+          tableCount={registrationsTournament.tableCount}
+          seatsPerTable={registrationsTournament.seatsPerTable}
         />
       )}
     </div>

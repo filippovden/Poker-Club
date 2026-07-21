@@ -72,6 +72,21 @@ if (!registrationColumns.some((c) => c.name === "status")) {
   sqlite.exec("ALTER TABLE registrations ADD COLUMN status TEXT NOT NULL DEFAULT 'pending';");
 }
 
+// tournaments.table_count/seats_per_table and registrations.table_number/
+// seat_number power the seating grid + admin seat assignment — backfill.
+if (!tournamentColumns.some((c) => c.name === "table_count")) {
+  sqlite.exec("ALTER TABLE tournaments ADD COLUMN table_count INTEGER;");
+}
+if (!tournamentColumns.some((c) => c.name === "seats_per_table")) {
+  sqlite.exec("ALTER TABLE tournaments ADD COLUMN seats_per_table INTEGER;");
+}
+if (!registrationColumns.some((c) => c.name === "table_number")) {
+  sqlite.exec("ALTER TABLE registrations ADD COLUMN table_number INTEGER;");
+}
+if (!registrationColumns.some((c) => c.name === "seat_number")) {
+  sqlite.exec("ALTER TABLE registrations ADD COLUMN seat_number INTEGER;");
+}
+
 export const db = drizzle(
   async (sql, params, method) => {
     const stmt = sqlite.prepare(sql);

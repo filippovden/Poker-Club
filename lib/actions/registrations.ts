@@ -153,7 +153,75 @@ export async function adminSetRegistrationStatus(
   status: "pending" | "approved" | "rejected",
 ) {
   await requireAdmin();
-  await db.update(registrations).set({ status }).where(eq(registrations.id, id));
+  const patch: Partial<typeof registrations.$inferInsert> = { status };
+  if (status !== "approved") {
+    patch.tableNumber = null;
+    patch.seatNumber = null;
+  }
+  await db.update(registrations).set(patch).where(eq(registrations.id, id));
+  revalidatePath("/tournaments");
+  revalidatePath("/admin/dashboard");
+}
+
+export interface AssignSeatsResult {
+  error?: string;
+  seated?: number;
+  unseated?: number;
+}
+
+// Randomly balances all approved applicants across the tournament's
+// tables — mirrors how live tournaments actually draw seats, rather
+// than letting players pick a specific chair online.
+export async function adminAssignSeats(tournamentId: number): Promise<AssignSeatsResult> {
+  await requireAdmin();
+
+  const [tournament] = await db
+    .select()
+    .from(tournaments)
+    .where(eq(tournaments.id, tournamentId))
+    .limit(1);
+
+  if (!tournament?.tableCount || !tournament?.seatsPerTable) {
+    return { error: "Для этого турнира не настроена рассадка по столам" };
+  }
+
+  const approved = await db
+    .select()
+    .from(registrations)
+    .where(and(eq(registrations.tournamentId, tournamentId), eq(registrations.status, "approved")));
+
+  const capacity = tournament.tableCount * tournament.seatsPerTable;
+  const shuffled = [...approved].sort(() => Math.random() - 0.5);
+  const toSeat = shuffled.slice(0, capacity);
+  const overflow = shuffled.slice(capacity);
+
+  for (const [i, reg] of toSeat.entries()) {
+    const tableNumber = Math.floor(i / tournament.seatsPerTable) + 1;
+    const seatNumber = (i % tournament.seatsPerTable) + 1;
+    await db
+      .update(registrations)
+      .set({ tableNumber, seatNumber })
+      .where(eq(registrations.id, reg.id));
+  }
+  for (const reg of overflow) {
+    await db
+      .update(registrations)
+      .set({ tableNumber: null, seatNumber: null })
+      .where(eq(registrations.id, reg.id));
+  }
+
+  revalidatePath("/tournaments");
+  revalidatePath("/admin/dashboard");
+  return { seated: toSeat.length, unseated: overflow.length };
+}
+
+export async function adminSetSeat(
+  id: number,
+  tableNumber: number | null,
+  seatNumber: number | null,
+) {
+  await requireAdmin();
+  await db.update(registrations).set({ tableNumber, seatNumber }).where(eq(registrations.id, id));
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
 }
