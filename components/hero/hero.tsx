@@ -142,7 +142,7 @@ export function Hero() {
           transition={{ duration: 0.8, delay: 0.4, ease: EASE }}
           className="mb-6"
         >
-          <Badge variant="accent">18+ · закрытый клуб</Badge>
+          <Badge variant="accent">Закрытый клуб</Badge>
         </motion.div>
 
         <h1 className="font-display max-w-3xl text-[clamp(2.5rem,8vw,5.5rem)] font-medium leading-[0.95] tracking-tight text-white">

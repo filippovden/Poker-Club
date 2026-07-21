@@ -118,6 +118,14 @@
   display: block;
 }
 
+html[data-age-gate="confirmed"] .age-gate {
+  display: none;
+}
+
+html:not([data-age-gate="confirmed"]) body {
+  overflow: hidden;
+}
+
 /* Cinematic film-grain texture, dosed subtly over dark surfaces */
 .grain {
   position: relative;

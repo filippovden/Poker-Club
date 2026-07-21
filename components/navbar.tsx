@@ -47,7 +47,7 @@ export function Navbar() {
         className={cn(
           "mx-auto flex max-w-6xl items-center justify-between px-4 transition-all duration-500 sm:px-6",
           scrolled
-            ? "mt-3 rounded-full border border-white/10 bg-black/60 py-2.5 px-5 backdrop-blur-xl shadow-lg shadow-black/30"
+            ? "mt-3 rounded-full border border-white/15 bg-[#18140f]/85 py-2.5 px-5 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.07)] backdrop-blur-xl"
             : "mt-0 bg-gradient-to-b from-black/55 via-black/15 to-transparent py-5",
         )}
       >
@@ -96,7 +96,7 @@ export function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="mx-4 mt-2 flex flex-col gap-1 rounded-2xl border border-white/10 bg-black/85 p-3 shadow-xl backdrop-blur-xl md:hidden"
+            className="mx-4 mt-2 flex flex-col gap-1 rounded-2xl border border-white/15 bg-[#18140f]/95 p-3 shadow-[0_20px_40px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.07)] backdrop-blur-xl md:hidden"
           >
             {LINKS.map((link) => (
               <Link

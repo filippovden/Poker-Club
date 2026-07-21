@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeScript } from "@/components/theme-script";
 import { CustomCursor } from "@/components/custom-cursor";
 import { ServiceWorkerRegister } from "@/components/sw-register";
+import { AgeGate } from "@/components/age-gate";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -46,6 +47,7 @@ export default function RootLayout({
     <html
       lang="ru"
       data-theme="dark"
+      data-age-gate="pending"
       className={`${inter.variable} ${displayFont.variable} h-full antialiased`}
       suppressHydrationWarning
     >
@@ -53,6 +55,7 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
+        <AgeGate />
         <CustomCursor />
         <ServiceWorkerRegister />
         {children}

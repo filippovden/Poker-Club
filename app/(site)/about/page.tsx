@@ -18,7 +18,7 @@ export default function AboutPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-28 sm:py-32">
       <Reveal className="mb-6">
-        <Badge variant="accent">18+ · закрытый клуб</Badge>
+        <Badge variant="accent">Закрытый клуб</Badge>
       </Reveal>
 
       <Reveal delay={0.05}>

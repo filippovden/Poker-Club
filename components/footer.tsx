@@ -54,7 +54,7 @@ export function Footer() {
         </nav>
 
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-[var(--border)] pt-6 text-xs text-[var(--muted-foreground)]">
-          <span>© {year} Lockdown Poker. Только 18+.</span>
+          <span>© {year} Lockdown Poker</span>
           <div className="flex gap-6">
             <Link href="/legal" className="hover:text-[var(--foreground)]">
               Правовая информация
