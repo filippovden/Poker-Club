@@ -169,9 +169,12 @@ export interface AssignSeatsResult {
   unseated?: number;
 }
 
-// Randomly balances all approved applicants across the tournament's
-// tables — mirrors how live tournaments actually draw seats, rather
-// than letting players pick a specific chair online.
+// Seats only the not-yet-seated approved applicants into the remaining
+// free seats — players who are already seated keep their table/seat
+// (re-running this after new approvals shouldn't move people who
+// already told their friends where they're sitting). Randomizing who
+// gets which of the free seats still mirrors how live tournaments draw
+// seats, rather than letting players pick a specific chair online.
 export async function adminAssignSeats(tournamentId: number): Promise<AssignSeatsResult> {
   await requireAdmin();
 
@@ -184,35 +187,49 @@ export async function adminAssignSeats(tournamentId: number): Promise<AssignSeat
   if (!tournament?.tableCount || !tournament?.seatsPerTable) {
     return { error: "Для этого турнира не настроена рассадка по столам" };
   }
+  const { tableCount, seatsPerTable } = tournament;
 
   const approved = await db
     .select()
     .from(registrations)
     .where(and(eq(registrations.tournamentId, tournamentId), eq(registrations.status, "approved")));
 
-  const capacity = tournament.tableCount * tournament.seatsPerTable;
-  const shuffled = [...approved].sort(() => Math.random() - 0.5);
-  const toSeat = shuffled.slice(0, capacity);
-  const overflow = shuffled.slice(capacity);
+  const isValidSeat = (t: number | null, s: number | null): t is number =>
+    t != null && s != null && t >= 1 && t <= tableCount && s >= 1 && s <= seatsPerTable;
+
+  const alreadySeated = approved.filter((r) => isValidSeat(r.tableNumber, r.seatNumber));
+  const needsSeating = approved.filter((r) => !isValidSeat(r.tableNumber, r.seatNumber));
+
+  const occupied = new Set(alreadySeated.map((r) => `${r.tableNumber}-${r.seatNumber}`));
+  const freeSeats: { tableNumber: number; seatNumber: number }[] = [];
+  for (let t = 1; t <= tableCount; t++) {
+    for (let s = 1; s <= seatsPerTable; s++) {
+      if (!occupied.has(`${t}-${s}`)) freeSeats.push({ tableNumber: t, seatNumber: s });
+    }
+  }
+
+  const shuffled = [...needsSeating].sort(() => Math.random() - 0.5);
+  const toSeat = shuffled.slice(0, freeSeats.length);
+  const overflow = shuffled.slice(freeSeats.length);
 
   for (const [i, reg] of toSeat.entries()) {
-    const tableNumber = Math.floor(i / tournament.seatsPerTable) + 1;
-    const seatNumber = (i % tournament.seatsPerTable) + 1;
     await db
       .update(registrations)
-      .set({ tableNumber, seatNumber })
+      .set(freeSeats[i])
       .where(eq(registrations.id, reg.id));
   }
   for (const reg of overflow) {
-    await db
-      .update(registrations)
-      .set({ tableNumber: null, seatNumber: null })
-      .where(eq(registrations.id, reg.id));
+    if (reg.tableNumber != null || reg.seatNumber != null) {
+      await db
+        .update(registrations)
+        .set({ tableNumber: null, seatNumber: null })
+        .where(eq(registrations.id, reg.id));
+    }
   }
 
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
-  return { seated: toSeat.length, unseated: overflow.length };
+  return { seated: alreadySeated.length + toSeat.length, unseated: overflow.length };
 }
 
 export async function adminSetSeat(

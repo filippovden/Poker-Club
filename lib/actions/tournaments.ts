@@ -1,10 +1,10 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, gt, isNotNull, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
-import { tournaments } from "@/lib/db/schema";
+import { registrations, tournaments } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
 
 const tournamentSchema = z
@@ -36,6 +36,36 @@ function withComputedCapacity<T extends { tableCount: number | null; seatsPerTab
 export interface ActionResult {
   error?: string;
   success?: boolean;
+}
+
+// If a tournament's table layout shrinks (or is removed), any existing
+// seat assignments that no longer fit the new grid would otherwise sit
+// there silently — occupying a seat that no longer visually exists.
+// Clear only the ones that are actually out of range.
+async function clearOutOfRangeSeats(
+  tournamentId: number,
+  tableCount: number | null,
+  seatsPerTable: number | null,
+) {
+  if (tableCount == null || seatsPerTable == null) {
+    await db
+      .update(registrations)
+      .set({ tableNumber: null, seatNumber: null })
+      .where(eq(registrations.tournamentId, tournamentId));
+    return;
+  }
+  await db
+    .update(registrations)
+    .set({ tableNumber: null, seatNumber: null })
+    .where(
+      and(
+        eq(registrations.tournamentId, tournamentId),
+        or(
+          and(isNotNull(registrations.tableNumber), gt(registrations.tableNumber, tableCount)),
+          and(isNotNull(registrations.seatNumber), gt(registrations.seatNumber, seatsPerTable)),
+        ),
+      ),
+    );
 }
 
 async function requireAdmin() {
@@ -98,6 +128,7 @@ export async function updateTournamentAction(
     .update(tournaments)
     .set(withComputedCapacity(parsed.data))
     .where(eq(tournaments.id, id));
+  await clearOutOfRangeSeats(id, parsed.data.tableCount, parsed.data.seatsPerTable);
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
   return { success: true };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Shuffle, Trash2, X } from "lucide-react";
+import { Armchair, Check, Shuffle, Trash2, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import {
   adminListRegistrations,
   adminRemoveRegistration,
   adminSetRegistrationStatus,
+  adminSetSeat,
 } from "@/lib/actions/registrations";
 import type { Registration } from "@/lib/db/schema";
 
@@ -59,6 +60,13 @@ function RegistrationsList({
     await adminSetRegistrationStatus(id, status);
     const fresh = await adminListRegistrations(tournamentId);
     setList(fresh);
+  }
+
+  async function unseat(id: number) {
+    await adminSetSeat(id, null, null);
+    setList((prev) =>
+      prev?.map((r) => (r.id === id ? { ...r, tableNumber: null, seatNumber: null } : r)) ?? null,
+    );
   }
 
   async function assignSeats() {
@@ -134,6 +142,16 @@ function RegistrationsList({
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                  {r.status === "approved" && hasTables && r.tableNumber != null && (
+                    <button
+                      onClick={() => unseat(r.id)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                      aria-label="Снять с места"
+                      title="Снять с места"
+                    >
+                      <Armchair className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   {r.status !== "approved" && (
                     <button
                       onClick={() => setStatus(r.id, "approved")}
