@@ -15,7 +15,13 @@ const STATUSES = [
   { value: "completed", label: "Завершённые" },
 ] as const;
 
-export function TournamentsClient({ tournaments }: { tournaments: Tournament[] }) {
+export function TournamentsClient({
+  tournaments,
+  registrationCounts = {},
+}: {
+  tournaments: Tournament[];
+  registrationCounts?: Record<number, number>;
+}) {
   const [format, setFormat] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "calendar">("list");
@@ -102,12 +108,12 @@ export function TournamentsClient({ tournaments }: { tournaments: Tournament[] }
         <RevealGroup className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((t) => (
             <RevealItem key={t.id}>
-              <TournamentCard tournament={t} />
+              <TournamentCard tournament={t} registeredCount={registrationCounts[t.id]} />
             </RevealItem>
           ))}
         </RevealGroup>
       ) : (
-        <CalendarView tournaments={filtered} />
+        <CalendarView tournaments={filtered} registrationCounts={registrationCounts} />
       )}
     </div>
   );

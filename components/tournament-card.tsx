@@ -1,4 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { RegistrationDialog } from "@/components/tournaments/registration-dialog";
 import type { Tournament } from "@/lib/db/schema";
 
 const FORMAT_LABELS: Record<string, string> = {
@@ -24,8 +29,18 @@ function formatDate(iso: string) {
   });
 }
 
-export function TournamentCard({ tournament }: { tournament: Tournament }) {
+export function TournamentCard({
+  tournament,
+  registeredCount = 0,
+}: {
+  tournament: Tournament;
+  registeredCount?: number;
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false);
   const isPast = tournament.status === "completed";
+  const spotsLeft =
+    tournament.maxPlayers != null ? tournament.maxPlayers - registeredCount : null;
+  const isFull = spotsLeft !== null && spotsLeft <= 0;
 
   return (
     <div
@@ -62,6 +77,30 @@ export function TournamentCard({ tournament }: { tournament: Tournament }) {
           {FORMAT_LABELS[tournament.format] ?? tournament.format}
         </span>
       </div>
+
+      {spotsLeft !== null && !isPast && (
+        <span className={`text-xs ${isFull ? "text-[var(--danger)]" : "text-[var(--muted-foreground)]"}`}>
+          {isFull ? "Все места заняты" : `Осталось мест: ${spotsLeft}`}
+        </span>
+      )}
+
+      {!isPast && (
+        <Button
+          size="sm"
+          disabled={isFull}
+          onClick={() => setDialogOpen(true)}
+          className="w-full"
+        >
+          {isFull ? "Мест нет" : "Зарегистрироваться"}
+        </Button>
+      )}
+
+      <RegistrationDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        tournamentId={tournament.id}
+        tournamentTitle={tournament.title}
+      />
     </div>
   );
 }

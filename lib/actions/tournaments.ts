@@ -12,6 +12,7 @@ const tournamentSchema = z.object({
   format: z.enum(["NLH", "PLO", "MTT"]),
   startsAt: z.string().min(1, "Дата обязательна"),
   buyIn: z.coerce.number().int().min(0).nullable(),
+  maxPlayers: z.coerce.number().int().min(1).nullable(),
   description: z.string().nullable(),
   status: z.enum(["upcoming", "live", "completed"]),
 });
@@ -37,6 +38,7 @@ export async function createTournamentAction(
     format: formData.get("format"),
     startsAt: formData.get("startsAt"),
     buyIn: formData.get("buyIn") || null,
+    maxPlayers: formData.get("maxPlayers") || null,
     description: formData.get("description") || null,
     status: formData.get("status") || "upcoming",
   });
@@ -63,6 +65,7 @@ export async function updateTournamentAction(
     format: formData.get("format"),
     startsAt: formData.get("startsAt"),
     buyIn: formData.get("buyIn") || null,
+    maxPlayers: formData.get("maxPlayers") || null,
     description: formData.get("description") || null,
     status: formData.get("status") || "upcoming",
   });

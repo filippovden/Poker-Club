@@ -123,6 +123,17 @@ function TournamentFormFields({
       </div>
 
       <div className="flex flex-col gap-2">
+        <Label htmlFor="maxPlayers">Лимит мест (пусто = без лимита)</Label>
+        <Input
+          id="maxPlayers"
+          name="maxPlayers"
+          type="number"
+          min={1}
+          defaultValue={tournament?.maxPlayers ?? ""}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
         <Label htmlFor="description">Описание</Label>
         <Textarea
           id="description"

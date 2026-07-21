@@ -2,7 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Command as CommandIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Command as CommandIcon } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CommandPalette } from "./command-palette";
 import { TournamentFormDialog } from "./tournament-form-dialog";
 import { NewsFormDialog } from "./news-form-dialog";
+import { RegistrationsDialog } from "./registrations-dialog";
 import {
   createTournamentAction,
   updateTournamentAction,
@@ -56,6 +57,11 @@ export function DashboardShell({
   const [tournamentError, setTournamentError] = useState<string>();
   const [tournamentPending, setTournamentPending] = useState(false);
 
+  const [registrationsDialogOpen, setRegistrationsDialogOpen] = useState(false);
+  const [registrationsTournament, setRegistrationsTournament] = useState<Tournament | null>(
+    null,
+  );
+
   const [newsDialogOpen, setNewsDialogOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null);
   const [newsError, setNewsError] = useState<string>();
@@ -83,6 +89,7 @@ export function DashboardShell({
       format: String(formData.get("format")) as Tournament["format"],
       startsAt: new Date(String(formData.get("startsAt"))).toISOString(),
       buyIn: formData.get("buyIn") ? Number(formData.get("buyIn")) : null,
+      maxPlayers: formData.get("maxPlayers") ? Number(formData.get("maxPlayers")) : null,
       description: String(formData.get("description") || "") || null,
       status: String(formData.get("status")) as Tournament["status"],
       createdAt: editingTournament?.createdAt ?? new Date().toISOString(),
@@ -229,6 +236,16 @@ export function DashboardShell({
                   <div className="flex shrink-0 gap-1">
                     <button
                       onClick={() => {
+                        setRegistrationsTournament(t);
+                        setRegistrationsDialogOpen(true);
+                      }}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      aria-label="Участники"
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => {
                         setEditingTournament(t);
                         setTournamentError(undefined);
                         setTournamentDialogOpen(true);
@@ -313,6 +330,14 @@ export function DashboardShell({
         error={newsError}
         pending={newsPending}
       />
+      {registrationsTournament && (
+        <RegistrationsDialog
+          open={registrationsDialogOpen}
+          onOpenChange={setRegistrationsDialogOpen}
+          tournamentId={registrationsTournament.id}
+          tournamentTitle={registrationsTournament.title}
+        />
+      )}
     </div>
   );
 }

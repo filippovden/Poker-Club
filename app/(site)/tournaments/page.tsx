@@ -4,6 +4,7 @@ import { tournaments } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { TournamentsClient } from "@/components/tournaments/tournaments-client";
 import { Reveal } from "@/components/reveal";
+import { getRegistrationCounts } from "@/lib/db/registration-counts";
 
 export const metadata: Metadata = {
   title: "Турниры",
@@ -14,7 +15,10 @@ export const metadata: Metadata = {
 export const revalidate = 0;
 
 export default async function TournamentsPage() {
-  const all = await db.select().from(tournaments).orderBy(desc(tournaments.startsAt));
+  const [all, registrationCounts] = await Promise.all([
+    db.select().from(tournaments).orderBy(desc(tournaments.startsAt)),
+    getRegistrationCounts(),
+  ]);
 
   const upcomingEvents = all
     .filter((t) => t.status !== "completed")
@@ -61,7 +65,7 @@ export default async function TournamentsPage() {
         </p>
       </Reveal>
 
-      <TournamentsClient tournaments={all} />
+      <TournamentsClient tournaments={all} registrationCounts={registrationCounts} />
     </div>
   );
 }

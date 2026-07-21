@@ -16,7 +16,13 @@ function dayKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-export function CalendarView({ tournaments }: { tournaments: Tournament[] }) {
+export function CalendarView({
+  tournaments,
+  registrationCounts = {},
+}: {
+  tournaments: Tournament[];
+  registrationCounts?: Record<number, number>;
+}) {
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -113,7 +119,7 @@ export function CalendarView({ tournaments }: { tournaments: Tournament[] }) {
       {selectedTournaments.length > 0 && (
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {selectedTournaments.map((t) => (
-            <TournamentCard key={t.id} tournament={t} />
+            <TournamentCard key={t.id} tournament={t} registeredCount={registrationCounts[t.id]} />
           ))}
         </div>
       )}

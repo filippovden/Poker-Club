@@ -5,14 +5,18 @@ import { tournaments } from "@/lib/db/schema";
 import { Reveal, RevealGroup, RevealItem } from "@/components/reveal";
 import { TournamentCard } from "@/components/tournament-card";
 import { Button } from "@/components/ui/button";
+import { getRegistrationCounts } from "@/lib/db/registration-counts";
 
 export async function LiveTournamentsSection() {
-  const upcoming = await db
-    .select()
-    .from(tournaments)
-    .where(eq(tournaments.status, "upcoming"))
-    .orderBy(desc(tournaments.startsAt))
-    .limit(3);
+  const [upcoming, registrationCounts] = await Promise.all([
+    db
+      .select()
+      .from(tournaments)
+      .where(eq(tournaments.status, "upcoming"))
+      .orderBy(desc(tournaments.startsAt))
+      .limit(3),
+    getRegistrationCounts(),
+  ]);
 
   return (
     <section className="border-y border-[var(--border)] bg-[var(--surface)]/40 py-24 sm:py-32">
@@ -39,7 +43,7 @@ export async function LiveTournamentsSection() {
           <RevealGroup className="grid gap-5 md:grid-cols-3">
             {upcoming.map((t) => (
               <RevealItem key={t.id}>
-                <TournamentCard tournament={t} />
+                <TournamentCard tournament={t} registeredCount={registrationCounts[t.id]} />
               </RevealItem>
             ))}
           </RevealGroup>

@@ -8,6 +8,7 @@ export const tournaments = sqliteTable("tournaments", {
   startsAt: text("starts_at").notNull(),
   buyIn: integer("buy_in"),
   description: text("description"),
+  maxPlayers: integer("max_players"),
   status: text("status", { enum: ["upcoming", "live", "completed"] })
     .notNull()
     .default("upcoming"),
@@ -18,6 +19,23 @@ export const tournaments = sqliteTable("tournaments", {
 
 export type Tournament = typeof tournaments.$inferSelect;
 export type NewTournament = typeof tournaments.$inferInsert;
+
+export const registrations = sqliteTable("registrations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tournamentId: integer("tournament_id")
+    .notNull()
+    .references(() => tournaments.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  phone: text("phone").notNull(),
+  email: text("email"),
+  cancelToken: text("cancel_token").notNull().unique(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+export type Registration = typeof registrations.$inferSelect;
+export type NewRegistration = typeof registrations.$inferInsert;
 
 export const news = sqliteTable("news", {
   id: integer("id").primaryKey({ autoIncrement: true }),

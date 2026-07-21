@@ -4,7 +4,6 @@ import { drizzle } from "drizzle-orm/sqlite-proxy";
 import * as schema from "./schema";
 
 declare global {
-   
   var __lpSqlite: DatabaseSync | undefined;
 }
 
@@ -12,6 +11,8 @@ const DB_PATH = path.join(process.cwd(), "data.sqlite");
 
 const sqlite = globalThis.__lpSqlite ?? new DatabaseSync(DB_PATH);
 if (process.env.NODE_ENV !== "production") globalThis.__lpSqlite = sqlite;
+
+sqlite.exec("PRAGMA foreign_keys = ON;");
 
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS tournaments (
@@ -40,7 +41,26 @@ sqlite.exec(`
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS registrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    email TEXT,
+    cancel_token TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (current_timestamp)
+  );
 `);
+
+// tournaments.max_players was added after initial release — backfill the
+// column on existing databases instead of requiring a fresh data.sqlite.
+const tournamentColumns = sqlite
+  .prepare("PRAGMA table_info(tournaments)")
+  .all() as { name: string }[];
+if (!tournamentColumns.some((c) => c.name === "max_players")) {
+  sqlite.exec("ALTER TABLE tournaments ADD COLUMN max_players INTEGER;");
+}
 
 export const db = drizzle(
   async (sql, params, method) => {
