@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Check, Copy } from "lucide-react";
 import {
@@ -36,6 +36,49 @@ export function RegistrationDialog({
   const action = registerForTournamentAction.bind(null, tournamentId);
   const [state, formAction, pending] = useActionState(action, initialState);
   const [copied, setCopied] = useState(false);
+  const [clientError, setClientError] = useState<string | null>(null);
+
+  // Controlled fields — React's form-action API resets uncontrolled inputs
+  // after every submission (success or error), which was wiping the name/
+  // email/checkboxes the moment the server returned a validation error
+  // (e.g. "already applied"), forcing people to retype everything.
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    // Always take over submission manually (rather than letting the form's
+    // `action` prop submit natively) — React calls the underlying DOM
+    // form.reset() after any action-backed submission settles, which wipes
+    // out these controlled fields' visual state even though our own React
+    // state still holds the values. Dispatching by hand avoids that reset.
+    e.preventDefault();
+
+    if (name.trim().length < 2) {
+      setClientError("Введите имя");
+      return;
+    }
+    if (phone.trim().length < 5 || !/^[\d\s()+-]+$/.test(phone.trim())) {
+      setClientError("Похоже на некорректный номер телефона");
+      return;
+    }
+    if (!consent) {
+      setClientError("Нужно согласие на обработку персональных данных");
+      return;
+    }
+    if (!ageConfirmed) {
+      setClientError("Нужно подтверждение возраста 18+");
+      return;
+    }
+    setClientError(null);
+    playClick();
+    const formData = new FormData(e.currentTarget);
+    startTransition(() => {
+      formAction(formData);
+    });
+  }
 
   const cancelUrl =
     state.success && state.cancelToken
@@ -95,13 +138,7 @@ export function RegistrationDialog({
               <DialogDescription>«{tournamentTitle}»</DialogDescription>
             </DialogHeader>
 
-            <form
-              action={(fd) => {
-                playClick();
-                formAction(fd);
-              }}
-              className="flex flex-col gap-4"
-            >
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <input
                 type="text"
                 name="website"
@@ -113,7 +150,13 @@ export function RegistrationDialog({
 
               <div className="flex flex-col gap-2">
                 <Label htmlFor="reg-name">Имя</Label>
-                <Input id="reg-name" name="name" required autoComplete="name" />
+                <Input
+                  id="reg-name"
+                  name="name"
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="reg-phone">Телефон</Label>
@@ -121,18 +164,31 @@ export function RegistrationDialog({
                   id="reg-phone"
                   name="phone"
                   type="tel"
-                  required
                   autoComplete="tel"
                   placeholder="+7 900 000-00-00"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                 />
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="reg-email">Email (необязательно)</Label>
-                <Input id="reg-email" name="email" type="email" autoComplete="email" />
+                <Input
+                  id="reg-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
 
               <label className="flex items-start gap-2.5 text-xs leading-relaxed text-[var(--muted-foreground)]">
-                <Checkbox name="consent" required className="mt-0.5" />
+                <Checkbox
+                  name="consent"
+                  className="mt-0.5"
+                  checked={consent}
+                  onCheckedChange={(v) => setConsent(v === true)}
+                />
                 <span>
                   Даю согласие на обработку персональных данных в соответствии с{" "}
                   <Link href="/legal" target="_blank" className="underline hover:text-[var(--foreground)]">
@@ -142,11 +198,18 @@ export function RegistrationDialog({
                 </span>
               </label>
               <label className="flex items-start gap-2.5 text-xs leading-relaxed text-[var(--muted-foreground)]">
-                <Checkbox name="age" required className="mt-0.5" />
+                <Checkbox
+                  name="age"
+                  className="mt-0.5"
+                  checked={ageConfirmed}
+                  onCheckedChange={(v) => setAgeConfirmed(v === true)}
+                />
                 <span>Подтверждаю, что мне исполнилось 18 лет.</span>
               </label>
 
-              {state.error && <p className="text-sm text-[var(--danger)]">{state.error}</p>}
+              {(clientError || state.error) && (
+                <p className="text-sm text-[var(--danger)]">{clientError || state.error}</p>
+              )}
 
               <Button type="submit" disabled={pending} className="mt-2">
                 {pending ? "Отправляем…" : "Отправить заявку"}
