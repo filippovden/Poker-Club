@@ -14,7 +14,13 @@ const MONTHS = [
 ];
 
 function dayKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  // Local calendar day, not UTC — using toISOString() here shifted every
+  // tournament by a day for users east of UTC (e.g. Moscow, UTC+3), since
+  // local midnight for a calendar cell converts to the previous day in UTC.
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function CalendarView({
