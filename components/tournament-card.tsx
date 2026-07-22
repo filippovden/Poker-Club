@@ -145,6 +145,16 @@ export function TournamentCard({
               <DialogTitle>Рассадка</DialogTitle>
               <DialogDescription>«{tournament.title}»</DialogDescription>
             </DialogHeader>
+            <div className="flex items-center gap-4 text-xs text-[var(--muted-foreground)]">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full border border-[var(--accent)] bg-[var(--accent)]" />
+                Занято
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full border border-[var(--border)] bg-[var(--surface-2)]" />
+                Свободно
+              </span>
+            </div>
             <SeatingGrid
               tableCount={tournament.tableCount!}
               seatsPerTable={tournament.seatsPerTable!}
