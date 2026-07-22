@@ -89,15 +89,19 @@ export default function AboutPage() {
               <span>{SITE_CONTENT.contacts.email}</span>
             </a>
             <a
-              href={`tel:${SITE_CONTENT.contacts.phone.replace(/\D/g, "")}`}
+              href={`https://t.me/${SITE_CONTENT.contacts.telegram.replace(/^@/, "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center justify-between px-5 py-4 hover:bg-[var(--surface-2)]"
             >
-              <span className="text-xs text-[var(--muted-foreground)]">Телефон</span>
-              <span>{SITE_CONTENT.contacts.phone}</span>
-            </a>
-            <div className="flex items-center justify-between px-5 py-4">
               <span className="text-xs text-[var(--muted-foreground)]">Telegram</span>
               <span>{SITE_CONTENT.contacts.telegram}</span>
+            </a>
+            <div className="flex items-center justify-between px-5 py-4">
+              <span className="text-xs text-[var(--muted-foreground)]">Адрес зала</span>
+              <span className="text-right text-[var(--muted-foreground)]">
+                Сообщим при подтверждении заявки
+              </span>
             </div>
           </div>
         </Reveal>

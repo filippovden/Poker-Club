@@ -114,14 +114,21 @@ export function TournamentCard({
       )}
 
       {!isPast && (
-        <Button
-          size="sm"
-          disabled={isFull}
-          onClick={() => setDialogOpen(true)}
-          className="w-full"
-        >
-          {isFull ? "Мест нет" : "Подать заявку"}
-        </Button>
+        <div className="flex flex-col gap-1.5">
+          <Button
+            size="sm"
+            disabled={isFull}
+            onClick={() => setDialogOpen(true)}
+            className="w-full"
+          >
+            {isFull ? "Мест нет" : "Подать заявку"}
+          </Button>
+          {!isFull && (
+            <p className="text-center text-[11px] text-[var(--muted-foreground)]">
+              Заявка на рассмотрение — организаторы свяжутся с вами для подтверждения
+            </p>
+          )}
+        </div>
       )}
 
       <RegistrationDialog
