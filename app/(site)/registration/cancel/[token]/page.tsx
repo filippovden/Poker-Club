@@ -3,30 +3,13 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { registrations, tournaments } from "@/lib/db/schema";
 import { Reveal } from "@/components/reveal";
-import { CancelRegistrationButton } from "@/components/tournaments/cancel-registration-button";
+import { CancelRegistrationView } from "@/components/tournaments/cancel-registration-view";
 
 export const metadata: Metadata = {
   title: "Отмена заявки",
 };
 
 export const revalidate = 0;
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Заявка на рассмотрении",
-  approved: "Заявка одобрена",
-  rejected: "Заявка отклонена",
-};
-
-function formatDate(iso: string) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString("ru-RU", {
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default async function CancelRegistrationPage({
   params,
@@ -58,28 +41,11 @@ export default async function CancelRegistrationPage({
           Отмена заявки
         </h1>
 
-        {!registration || !tournament ? (
-          <p className="mt-6 text-sm text-[var(--muted-foreground)]">
-            Заявка не найдена — возможно, она уже была отозвана.
-          </p>
-        ) : (
-          <>
-            <p className="mt-6 text-[var(--muted-foreground)]">
-              {registration.name}, вы подавали заявку на турнир
-            </p>
-            <p className="font-display mt-2 text-xl font-medium">{tournament.title}</p>
-            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-              {formatDate(tournament.startsAt)}
-            </p>
-            <p className="mt-3 text-sm font-medium text-[var(--accent)]">
-              {STATUS_LABELS[registration.status] ?? registration.status}
-            </p>
-
-            <div className="mt-8">
-              <CancelRegistrationButton token={token} />
-            </div>
-          </>
-        )}
+        <CancelRegistrationView
+          token={token}
+          registration={registration ?? null}
+          tournament={tournament ?? null}
+        />
       </Reveal>
     </div>
   );
