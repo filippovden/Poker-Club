@@ -57,10 +57,15 @@ const pendingApplications = new Map<number, PendingApplication>();
 
 const ABORT_BUTTON = [[{ text: "Отмена", callback_data: "apply_abort" }]];
 
-async function startApplication(chatId: number) {
-  const tournament = await getNextTournament();
+async function startApplication(chatId: number, tournamentId?: number) {
+  const tournament = tournamentId
+    ? await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1).then((r) => r[0])
+    : await getNextTournament();
   if (!tournament) {
-    await sendTelegramMessage(chatId, "Сейчас нет турниров, на которые можно записаться.");
+    await sendTelegramMessage(
+      chatId,
+      tournamentId ? "Этот турнир больше недоступен." : "Сейчас нет турниров, на которые можно записаться.",
+    );
     return;
   }
   pendingApplications.set(chatId, { step: "name", tournamentId: tournament.id });
@@ -443,6 +448,13 @@ async function handleCallbackQuery(update: TelegramUpdate) {
   const cancelMatch = /^cancel:(\d+)$/.exec(query.data);
   if (cancelMatch) {
     await handleCancelCallback(query, Number(cancelMatch[1]));
+    return;
+  }
+
+  const applyStartMatch = /^apply_start:(\d+)$/.exec(query.data);
+  if (applyStartMatch) {
+    await answerCallbackQuery(query.id);
+    await startApplication(query.message.chat.id, Number(applyStartMatch[1]));
     return;
   }
 

@@ -131,6 +131,18 @@ export function buildNextTournamentMessage(
   );
 }
 
+export function buildNewTournamentAnnouncementMessage(
+  tournament: TournamentInfo & { format: string; buyIn: number | null },
+) {
+  return (
+    `🆕 <b>Новый турнир!</b>\n\n` +
+    `🃏 ${escapeHtml(tournament.title)}\n` +
+    `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}\n` +
+    `💰 ${tournament.buyIn ? `${tournament.buyIn.toLocaleString("ru-RU")} ₽` : "Фриролл"} · ${escapeHtml(tournament.format)}\n\n` +
+    `Хотите на этот турнир?`
+  );
+}
+
 export function buildApplicationSummaryMessage(params: {
   name: string;
   phone: string;

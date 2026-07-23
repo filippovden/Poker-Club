@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { registrations, tournaments } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
+import { announceNewTournament } from "@/lib/telegram/broadcast";
 
 const tournamentSchema = z
   .object({
@@ -95,9 +96,19 @@ export async function createTournamentAction(
     return { error: parsed.error.issues[0]?.message || "Некорректные данные" };
   }
 
-  await db.insert(tournaments).values(withComputedCapacity(parsed.data));
+  const [created] = await db
+    .insert(tournaments)
+    .values(withComputedCapacity(parsed.data))
+    .returning();
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
+
+  if (created) {
+    announceNewTournament(created).catch((err) =>
+      console.error("[telegram] new-tournament broadcast failed:", err),
+    );
+  }
+
   return { success: true };
 }
 
