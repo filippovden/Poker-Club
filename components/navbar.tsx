@@ -6,8 +6,6 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Menu, X } from "lucide-react";
 import { LogoMark } from "./logo-mark";
-import { ThemeToggle } from "./theme-toggle";
-import { SoundToggle } from "./sound-toggle";
 import { cn } from "@/lib/utils";
 import { SITE_CONTENT } from "@/lib/content";
 
@@ -74,20 +72,14 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
-          <div className="hidden items-center gap-2 sm:flex">
-            <SoundToggle />
-            <ThemeToggle />
-          </div>
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-label={open ? "Закрыть меню" : "Открыть меню"}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white transition-colors hover:bg-white/10 md:hidden"
-          >
-            {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-label={open ? "Закрыть меню" : "Открыть меню"}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white transition-colors hover:bg-white/10 md:hidden"
+        >
+          {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+        </button>
       </div>
 
       <AnimatePresence>
@@ -108,13 +100,6 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <div className="mt-1 flex items-center justify-between px-4 py-1 sm:hidden">
-              <span className="text-xs text-white/50">Тема и звук</span>
-              <div className="flex gap-2">
-                <SoundToggle />
-                <ThemeToggle />
-              </div>
-            </div>
           </motion.nav>
         )}
       </AnimatePresence>

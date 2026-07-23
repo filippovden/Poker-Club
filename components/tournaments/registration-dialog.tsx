@@ -18,7 +18,6 @@ import {
   registerForTournamentAction,
   type RegisterResult,
 } from "@/lib/actions/registrations";
-import { playClick } from "@/lib/sound";
 
 const initialState: RegisterResult = {};
 
@@ -73,7 +72,6 @@ export function RegistrationDialog({
       return;
     }
     setClientError(null);
-    playClick();
     const formData = new FormData(e.currentTarget);
     startTransition(() => {
       formAction(formData);

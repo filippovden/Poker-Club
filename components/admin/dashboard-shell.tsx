@@ -18,7 +18,6 @@ import {
 } from "@/lib/actions/tournaments";
 import { createNewsAction, updateNewsAction, deleteNewsAction } from "@/lib/actions/news";
 import { logoutAction } from "@/lib/actions/auth";
-import { playClick } from "@/lib/sound";
 import type { Tournament, NewsArticle } from "@/lib/db/schema";
 
 type OptimisticAction<T> =
@@ -80,7 +79,6 @@ export function DashboardShell({
   }
 
   function duplicateTournament(t: Tournament) {
-    playClick();
     setEditingTournament(null);
     setDuplicateSeed({
       ...t,
@@ -100,7 +98,6 @@ export function DashboardShell({
   }
 
   function submitTournament(formData: FormData) {
-    playClick();
     setTournamentError(undefined);
     setTournamentPending(true);
     const tableCount = formData.get("tableCount") ? Number(formData.get("tableCount")) : null;
@@ -145,7 +142,6 @@ export function DashboardShell({
   }
 
   function submitNews(formData: FormData) {
-    playClick();
     setNewsError(undefined);
     setNewsPending(true);
     const optimisticItem: NewsArticle = {

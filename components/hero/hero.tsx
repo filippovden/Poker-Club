@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MagneticWrapper } from "@/components/magnetic";
-import { playClick } from "@/lib/sound";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const VIDEO_URL =
@@ -198,7 +197,7 @@ export function Hero() {
           className="mt-9 flex flex-wrap gap-3"
         >
           <MagneticWrapper>
-            <Button asChild size="lg" onClick={() => playClick()}>
+            <Button asChild size="lg">
               <Link href="/tournaments">Смотреть турниры</Link>
             </Button>
           </MagneticWrapper>
@@ -207,7 +206,6 @@ export function Hero() {
               asChild
               size="lg"
               variant="outline"
-              onClick={() => playClick()}
               className="border-white/25 text-white hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               <Link href="/about">О клубе</Link>
