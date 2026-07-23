@@ -109,6 +109,19 @@ export function RegistrationDialog({
                 участие в «{tournamentTitle}».
               </DialogDescription>
             </DialogHeader>
+            {state.telegramLink && (
+              <div className="flex flex-col gap-2 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 p-3">
+                <p className="text-sm">
+                  Откройте нашего Telegram-бота — пришлём подтверждение от
+                  организаторов и напомним перед началом турнира.
+                </p>
+                <Button asChild size="sm">
+                  <a href={state.telegramLink} target="_blank" rel="noopener noreferrer">
+                    Открыть Telegram-бота
+                  </a>
+                </Button>
+              </div>
+            )}
             {cancelUrl && (
               <div className="flex flex-col gap-2">
                 <p className="text-sm text-[var(--muted-foreground)]">

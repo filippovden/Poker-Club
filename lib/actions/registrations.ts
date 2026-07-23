@@ -7,6 +7,18 @@ import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { registrations, tournaments } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
+import { sendTelegramMessage, tournamentRegistrationDeepLink } from "@/lib/telegram/client";
+
+function formatDate(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Введите имя").max(120),
@@ -33,6 +45,7 @@ export interface RegisterResult {
   error?: string;
   success?: boolean;
   cancelToken?: string;
+  telegramLink?: string;
 }
 
 export async function registerForTournamentAction(
@@ -109,7 +122,24 @@ export async function registerForTournamentAction(
 
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
-  return { success: true, cancelToken };
+
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (adminChatId) {
+    sendTelegramMessage(
+      adminChatId,
+      `Новая заявка на «${tournament.title}»\n` +
+        `Имя: ${parsed.data.name}\n` +
+        `Телефон: ${parsed.data.phone}` +
+        (parsed.data.email ? `\nEmail: ${parsed.data.email}` : "") +
+        `\n\nПодтвердить или отклонить: /admin/dashboard`,
+    ).catch((err) => console.error("[telegram] admin notify failed:", err));
+  }
+
+  return {
+    success: true,
+    cancelToken,
+    telegramLink: tournamentRegistrationDeepLink(cancelToken) ?? undefined,
+  };
 }
 
 export async function cancelRegistrationAction(token: string) {
@@ -161,6 +191,28 @@ export async function adminSetRegistrationStatus(
   await db.update(registrations).set(patch).where(eq(registrations.id, id));
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
+
+  if (status === "approved" || status === "rejected") {
+    const [registration] = await db
+      .select()
+      .from(registrations)
+      .where(eq(registrations.id, id))
+      .limit(1);
+    if (registration?.telegramChatId) {
+      const [tournament] = await db
+        .select()
+        .from(tournaments)
+        .where(eq(tournaments.id, registration.tournamentId))
+        .limit(1);
+      const text =
+        status === "approved"
+          ? `Заявка подтверждена! Ждём вас на «${tournament?.title ?? "турнире"}»${tournament ? ` ${formatDate(tournament.startsAt)}` : ""}.`
+          : `К сожалению, заявку на «${tournament?.title ?? "турнир"}» отклонили. Если это неожиданно — напишите нам, разберёмся.`;
+      sendTelegramMessage(registration.telegramChatId, text).catch((err) =>
+        console.error("[telegram] status notify failed:", err),
+      );
+    }
+  }
 }
 
 export interface AssignSeatsResult {

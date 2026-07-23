@@ -34,6 +34,11 @@ export const registrations = sqliteTable("registrations", {
   status: text("status").notNull().default("pending"),
   tableNumber: integer("table_number"),
   seatNumber: integer("seat_number"),
+  telegramChatId: text("telegram_chat_id"),
+  reminded72h: integer("reminded_72h", { mode: "boolean" }).notNull().default(false),
+  reminded48h: integer("reminded_48h", { mode: "boolean" }).notNull().default(false),
+  reminded24h: integer("reminded_24h", { mode: "boolean" }).notNull().default(false),
+  reminded2h: integer("reminded_2h", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),

@@ -87,6 +87,18 @@ if (!registrationColumns.some((c) => c.name === "seat_number")) {
   sqlite.exec("ALTER TABLE registrations ADD COLUMN seat_number INTEGER;");
 }
 
+// registrations.telegram_chat_id + reminded_* power the Telegram bot
+// (linking a registration to a chat, and tracking which pre-tournament
+// reminders already went out) — backfill for existing databases.
+if (!registrationColumns.some((c) => c.name === "telegram_chat_id")) {
+  sqlite.exec("ALTER TABLE registrations ADD COLUMN telegram_chat_id TEXT;");
+}
+for (const col of ["reminded_72h", "reminded_48h", "reminded_24h", "reminded_2h"]) {
+  if (!registrationColumns.some((c) => c.name === col)) {
+    sqlite.exec(`ALTER TABLE registrations ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0;`);
+  }
+}
+
 export const db = drizzle(
   async (sql, params, method) => {
     const stmt = sqlite.prepare(sql);
