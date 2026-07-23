@@ -34,6 +34,9 @@ export const registrations = sqliteTable("registrations", {
   status: text("status").notNull().default("pending"),
   tableNumber: integer("table_number"),
   seatNumber: integer("seat_number"),
+  // Final standing once the tournament is marked completed (1 = winner).
+  // Only meaningful for approved registrations.
+  place: integer("place"),
   telegramChatId: text("telegram_chat_id"),
   reminded72h: integer("reminded_72h", { mode: "boolean" }).notNull().default(false),
   reminded48h: integer("reminded_48h", { mode: "boolean" }).notNull().default(false),

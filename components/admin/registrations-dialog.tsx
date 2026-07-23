@@ -14,6 +14,7 @@ import {
   adminAssignSeats,
   adminListRegistrations,
   adminRemoveRegistration,
+  adminSetPlace,
   adminSetRegistrationStatus,
   adminSetSeat,
 } from "@/lib/actions/registrations";
@@ -62,6 +63,12 @@ function RegistrationsList({
     setStatusError(result?.error ?? null);
     const fresh = await adminListRegistrations(tournamentId);
     setList(fresh);
+  }
+
+  async function setPlace(id: number, value: string) {
+    const place = value.trim() === "" ? null : Number(value);
+    await adminSetPlace(id, Number.isFinite(place) ? place : null);
+    setList((prev) => prev?.map((r) => (r.id === id ? { ...r, place } : r)) ?? null);
   }
 
   async function unseat(id: number) {
@@ -149,6 +156,17 @@ function RegistrationsList({
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                  {r.status === "approved" && (
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="Место"
+                      defaultValue={r.place ?? ""}
+                      onBlur={(e) => setPlace(r.id, e.target.value)}
+                      title="Итоговое место в турнире"
+                      className="h-8 w-16 rounded-lg border border-[var(--border)] bg-transparent px-2 text-xs"
+                    />
+                  )}
                   {r.status === "approved" && hasTables && r.tableNumber != null && (
                     <button
                       onClick={() => unseat(r.id)}

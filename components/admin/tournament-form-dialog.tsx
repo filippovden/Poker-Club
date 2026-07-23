@@ -41,22 +41,26 @@ function toDatetimeLocal(iso?: string) {
 
 function TournamentFormFields({
   tournament,
+  defaults,
   onSubmit,
   error,
   pending,
 }: {
   tournament: Tournament | null;
+  defaults?: Tournament | null;
   onSubmit: (formData: FormData) => void;
   error?: string;
   pending?: boolean;
 }) {
-  const [format, setFormat] = useState<TournamentFormValues["format"]>(
-    tournament?.format ?? "NLH",
-  );
+  // When duplicating a tournament, `tournament` stays null (this is still a
+  // create, not an edit) but `defaults` carries the source tournament's
+  // values to pre-fill the form with.
+  const source = tournament ?? defaults ?? null;
+  const [format, setFormat] = useState<TournamentFormValues["format"]>(source?.format ?? "NLH");
   const [status, setStatus] = useState<TournamentFormValues["status"]>(
-    tournament?.status ?? "upcoming",
+    source?.status ?? "upcoming",
   );
-  const [useTables, setUseTables] = useState(tournament?.tableCount != null);
+  const [useTables, setUseTables] = useState(source?.tableCount != null);
 
   return (
     <form
@@ -69,7 +73,7 @@ function TournamentFormFields({
     >
       <div className="flex flex-col gap-2">
         <Label htmlFor="title">Название</Label>
-        <Input id="title" name="title" defaultValue={tournament?.title} required />
+        <Input id="title" name="title" defaultValue={source?.title} required />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -108,7 +112,7 @@ function TournamentFormFields({
             id="startsAt"
             name="startsAt"
             type="datetime-local"
-            defaultValue={toDatetimeLocal(tournament?.startsAt)}
+            defaultValue={toDatetimeLocal(source?.startsAt)}
             required
           />
         </div>
@@ -119,7 +123,7 @@ function TournamentFormFields({
             name="buyIn"
             type="number"
             min={0}
-            defaultValue={tournament?.buyIn ?? ""}
+            defaultValue={source?.buyIn ?? ""}
           />
         </div>
       </div>
@@ -142,7 +146,7 @@ function TournamentFormFields({
                 name="tableCount"
                 type="number"
                 min={1}
-                defaultValue={tournament?.tableCount ?? 5}
+                defaultValue={source?.tableCount ?? 5}
               />
             </div>
             <div className="flex flex-col gap-2">
@@ -152,7 +156,7 @@ function TournamentFormFields({
                 name="seatsPerTable"
                 type="number"
                 min={1}
-                defaultValue={tournament?.seatsPerTable ?? 9}
+                defaultValue={source?.seatsPerTable ?? 9}
               />
             </div>
           </div>
@@ -164,7 +168,7 @@ function TournamentFormFields({
               name="maxPlayers"
               type="number"
               min={1}
-              defaultValue={tournament?.maxPlayers ?? 60}
+              defaultValue={source?.maxPlayers ?? 60}
             />
           </div>
         )}
@@ -176,7 +180,7 @@ function TournamentFormFields({
           id="description"
           name="description"
           rows={3}
-          defaultValue={tournament?.description ?? ""}
+          defaultValue={source?.description ?? ""}
         />
       </div>
 
@@ -193,6 +197,7 @@ export function TournamentFormDialog({
   open,
   onOpenChange,
   tournament,
+  defaults,
   onSubmit,
   error,
   pending,
@@ -200,6 +205,7 @@ export function TournamentFormDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tournament: Tournament | null;
+  defaults?: Tournament | null;
   onSubmit: (formData: FormData) => void;
   error?: string;
   pending?: boolean;
@@ -216,8 +222,8 @@ export function TournamentFormDialog({
 
         {open && (
           <TournamentFormFields
-            key={tournament?.id ?? "new"}
             tournament={tournament}
+            defaults={defaults}
             onSubmit={onSubmit}
             error={error}
             pending={pending}

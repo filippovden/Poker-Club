@@ -206,3 +206,10 @@ export async function adminSetSeat(
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
 }
+
+export async function adminSetPlace(id: number, place: number | null) {
+  await requireAdmin();
+  await db.update(registrations).set({ place }).where(eq(registrations.id, id));
+  revalidatePath("/tournaments");
+  revalidatePath("/admin/dashboard");
+}

@@ -6,6 +6,7 @@ import { TournamentsClient } from "@/components/tournaments/tournaments-client";
 import { Reveal } from "@/components/reveal";
 import { getRegistrationCounts } from "@/lib/db/registration-counts";
 import { getSeatAssignments } from "@/lib/db/seat-assignments";
+import { getTournamentResults } from "@/lib/db/tournament-results";
 import { SITE_CONTENT } from "@/lib/content";
 
 export const metadata: Metadata = {
@@ -16,10 +17,11 @@ export const metadata: Metadata = {
 export const revalidate = 0;
 
 export default async function TournamentsPage() {
-  const [all, registrationCounts, seatAssignments] = await Promise.all([
+  const [all, registrationCounts, seatAssignments, results] = await Promise.all([
     db.select().from(tournaments).orderBy(desc(tournaments.startsAt)),
     getRegistrationCounts(),
     getSeatAssignments(),
+    getTournamentResults(),
   ]);
 
   const upcomingEvents = all
@@ -71,6 +73,7 @@ export default async function TournamentsPage() {
         tournaments={all}
         registrationCounts={registrationCounts}
         seatAssignments={seatAssignments}
+        results={results}
       />
     </div>
   );

@@ -8,6 +8,7 @@ import { CalendarView } from "./calendar-view";
 import { cn } from "@/lib/utils";
 import type { Tournament } from "@/lib/db/schema";
 import type { SeatAssignment } from "@/lib/db/seat-assignments";
+import type { TournamentResultRow } from "@/lib/db/tournament-results";
 
 const FORMATS = ["NLH", "PLO", "MTT"] as const;
 const STATUSES = [
@@ -20,10 +21,12 @@ export function TournamentsClient({
   tournaments,
   registrationCounts = {},
   seatAssignments = {},
+  results = {},
 }: {
   tournaments: Tournament[];
   registrationCounts?: Record<number, number>;
   seatAssignments?: Record<number, SeatAssignment[]>;
+  results?: Record<number, TournamentResultRow[]>;
 }) {
   const [format, setFormat] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -124,6 +127,7 @@ export function TournamentsClient({
                 tournament={t}
                 registeredCount={registrationCounts[t.id]}
                 occupiedSeats={seatAssignments[t.id]}
+                results={results[t.id]}
               />
             </RevealItem>
           ))}
@@ -133,6 +137,7 @@ export function TournamentsClient({
           tournaments={filtered}
           registrationCounts={registrationCounts}
           seatAssignments={seatAssignments}
+          results={results}
         />
       )}
     </div>

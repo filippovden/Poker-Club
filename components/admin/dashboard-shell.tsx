@@ -2,7 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Users, Command as CommandIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Command as CommandIcon, Copy } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,10 +37,12 @@ export function DashboardShell({
   tournaments,
   news,
   username,
+  statusCounts = {},
 }: {
   tournaments: Tournament[];
   news: NewsArticle[];
   username: string;
+  statusCounts?: Record<number, { pending: number; approved: number; rejected: number }>;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<"tournaments" | "news">("tournaments");
@@ -54,6 +56,8 @@ export function DashboardShell({
 
   const [tournamentDialogOpen, setTournamentDialogOpen] = useState(false);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
+  const [duplicateSeed, setDuplicateSeed] = useState<Tournament | null>(null);
+  const [tournamentFormKey, setTournamentFormKey] = useState(0);
   const [tournamentError, setTournamentError] = useState<string>();
   const [tournamentPending, setTournamentPending] = useState(false);
 
@@ -69,7 +73,23 @@ export function DashboardShell({
 
   function openNewTournament() {
     setEditingTournament(null);
+    setDuplicateSeed(null);
     setTournamentError(undefined);
+    setTournamentFormKey((k) => k + 1);
+    setTournamentDialogOpen(true);
+  }
+
+  function duplicateTournament(t: Tournament) {
+    playClick();
+    setEditingTournament(null);
+    setDuplicateSeed({
+      ...t,
+      title: `${t.title} (копия)`,
+      startsAt: new Date(new Date(t.startsAt).getTime() + 7 * 24 * 3_600_000).toISOString(),
+      status: "upcoming",
+    });
+    setTournamentError(undefined);
+    setTournamentFormKey((k) => k + 1);
     setTournamentDialogOpen(true);
   }
 
@@ -222,6 +242,34 @@ export function DashboardShell({
         </div>
 
         <TabsContent value="tournaments">
+          {(() => {
+            const totals = Object.values(statusCounts).reduce(
+              (acc, c) => ({
+                pending: acc.pending + c.pending,
+                approved: acc.approved + c.approved,
+                rejected: acc.rejected + c.rejected,
+              }),
+              { pending: 0, approved: 0, rejected: 0 },
+            );
+            const total = totals.pending + totals.approved + totals.rejected;
+            if (total === 0) return null;
+            return (
+              <div className="mb-4 flex flex-wrap gap-4 rounded-xl border border-[var(--border)] p-4 text-sm">
+                <span>
+                  <span className="font-semibold">{totals.pending}</span>{" "}
+                  <span className="text-[var(--muted-foreground)]">на рассмотрении</span>
+                </span>
+                <span>
+                  <span className="font-semibold text-[var(--live)]">{totals.approved}</span>{" "}
+                  <span className="text-[var(--muted-foreground)]">одобрено всего</span>
+                </span>
+                <span>
+                  <span className="font-semibold text-[var(--danger)]">{totals.rejected}</span>{" "}
+                  <span className="text-[var(--muted-foreground)]">отклонено</span>
+                </span>
+              </div>
+            );
+          })()}
           <div className="overflow-hidden rounded-xl border border-[var(--border)]">
             {optimisticTournaments.length === 0 ? (
               <p className="p-8 text-center text-sm text-[var(--muted-foreground)]">
@@ -241,6 +289,17 @@ export function DashboardShell({
                       <p className="truncate text-sm font-medium" title={t.title}>{t.title}</p>
                       <p className="truncate text-xs text-[var(--muted-foreground)]">
                         {t.format} · {new Date(t.startsAt).toLocaleString("ru-RU")}
+                        {statusCounts[t.id] && (
+                          <>
+                            {" · "}
+                            <span className="text-[var(--live)]">
+                              {statusCounts[t.id].approved} одобр.
+                            </span>
+                            {statusCounts[t.id].pending > 0 && (
+                              <> · {statusCounts[t.id].pending} ожид.</>
+                            )}
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -259,13 +318,23 @@ export function DashboardShell({
                     <button
                       onClick={() => {
                         setEditingTournament(t);
+                        setDuplicateSeed(null);
                         setTournamentError(undefined);
+                        setTournamentFormKey((k) => k + 1);
                         setTournamentDialogOpen(true);
                       }}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
                       aria-label="Изменить"
                     >
                       <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => duplicateTournament(t)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      aria-label="Дублировать (на неделю позже)"
+                      title="Дублировать (на неделю позже)"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => removeTournament(t)}
@@ -327,9 +396,11 @@ export function DashboardShell({
       </Tabs>
 
       <TournamentFormDialog
+        key={tournamentFormKey}
         open={tournamentDialogOpen}
         onOpenChange={setTournamentDialogOpen}
         tournament={editingTournament}
+        defaults={duplicateSeed}
         onSubmit={submitTournament}
         error={tournamentError}
         pending={tournamentPending}

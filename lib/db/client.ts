@@ -99,6 +99,12 @@ for (const col of ["reminded_72h", "reminded_48h", "reminded_24h", "reminded_2h"
   }
 }
 
+// registrations.place holds the final standing (1st, 2nd, ...) once a
+// tournament is marked completed — backfill for existing databases.
+if (!registrationColumns.some((c) => c.name === "place")) {
+  sqlite.exec("ALTER TABLE registrations ADD COLUMN place INTEGER;");
+}
+
 export const db = drizzle(
   async (sql, params, method) => {
     const stmt = sqlite.prepare(sql);

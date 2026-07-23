@@ -6,6 +6,7 @@ import { TournamentCard } from "@/components/tournament-card";
 import { cn } from "@/lib/utils";
 import type { Tournament } from "@/lib/db/schema";
 import type { SeatAssignment } from "@/lib/db/seat-assignments";
+import type { TournamentResultRow } from "@/lib/db/tournament-results";
 
 const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const MONTHS = [
@@ -27,10 +28,12 @@ export function CalendarView({
   tournaments,
   registrationCounts = {},
   seatAssignments = {},
+  results = {},
 }: {
   tournaments: Tournament[];
   registrationCounts?: Record<number, number>;
   seatAssignments?: Record<number, SeatAssignment[]>;
+  results?: Record<number, TournamentResultRow[]>;
 }) {
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
@@ -139,6 +142,7 @@ export function CalendarView({
               tournament={t}
               registeredCount={registrationCounts[t.id]}
               occupiedSeats={seatAssignments[t.id]}
+              results={results[t.id]}
             />
           ))}
         </div>

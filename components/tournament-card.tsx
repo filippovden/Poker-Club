@@ -14,12 +14,15 @@ import { RegistrationDialog } from "@/components/tournaments/registration-dialog
 import { SeatingGrid } from "@/components/tournaments/seating-grid";
 import type { Tournament } from "@/lib/db/schema";
 import type { SeatAssignment } from "@/lib/db/seat-assignments";
+import type { TournamentResultRow } from "@/lib/db/tournament-results";
 
 const FORMAT_LABELS: Record<string, string> = {
   NLH: "No-Limit Hold'em",
   PLO: "Pot-Limit Omaha",
   MTT: "Многостоловый турнир",
 };
+
+const PLACE_MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 const STATUS_LABELS: Record<Tournament["status"], string> = {
   upcoming: "Скоро",
@@ -42,14 +45,17 @@ export function TournamentCard({
   tournament,
   registeredCount = 0,
   occupiedSeats = [],
+  results = [],
 }: {
   tournament: Tournament;
   registeredCount?: number;
   occupiedSeats?: SeatAssignment[];
+  results?: TournamentResultRow[];
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [seatsOpen, setSeatsOpen] = useState(false);
   const isPast = tournament.status === "completed";
+  const hasResults = results.length > 0;
   const spotsLeft =
     tournament.maxPlayers != null ? tournament.maxPlayers - registeredCount : null;
   const isFull = spotsLeft !== null && spotsLeft <= 0;
@@ -57,7 +63,7 @@ export function TournamentCard({
 
   return (
     <div
-      className={`group relative flex flex-col gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)]/70 p-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] backdrop-blur-md transition-all duration-300 hover:border-[var(--accent)]/40 hover:-translate-y-0.5 ${isPast ? "opacity-60" : ""}`}
+      className={`group relative flex flex-col gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)]/70 p-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] backdrop-blur-md transition-all duration-300 hover:border-[var(--accent)]/40 hover:-translate-y-0.5 ${isPast && !hasResults ? "opacity-60" : ""}`}
     >
       <div className="flex items-center justify-between">
         <Badge variant={tournament.status === "live" ? "live" : "default"}>
@@ -90,6 +96,24 @@ export function TournamentCard({
           {FORMAT_LABELS[tournament.format] ?? tournament.format}
         </span>
       </div>
+
+      {isPast && hasResults && (
+        <div className="rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/5 p-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.15em] text-[var(--accent)]">
+            🏆 Результаты
+          </p>
+          <ol className="flex flex-col gap-1 text-sm">
+            {results.slice(0, 5).map((r) => (
+              <li key={r.place} className="flex items-center gap-2">
+                <span className="w-5 shrink-0 text-center">
+                  {PLACE_MEDAL[r.place] ?? `${r.place}.`}
+                </span>
+                <span className="truncate">{r.name}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       {hasTables && (
         <button
