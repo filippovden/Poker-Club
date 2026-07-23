@@ -164,7 +164,7 @@ function TournamentFormFields({
               name="maxPlayers"
               type="number"
               min={1}
-              defaultValue={tournament?.maxPlayers ?? ""}
+              defaultValue={tournament?.maxPlayers ?? 60}
             />
           </div>
         )}

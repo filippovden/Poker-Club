@@ -1,15 +1,14 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-import { and, count, eq, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { registrations, tournaments } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
-import { sendTelegramMessage, tournamentRegistrationDeepLink } from "@/lib/telegram/client";
-import { buildAdminNewRegistrationMessage } from "@/lib/telegram/messages";
+import { tournamentRegistrationDeepLink } from "@/lib/telegram/client";
 import { setRegistrationStatus } from "@/lib/registrations/set-status";
+import { createRegistration } from "@/lib/registrations/create";
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Введите имя").max(120),
@@ -61,91 +60,23 @@ export async function registerForTournamentAction(
     return { success: true, cancelToken: "" };
   }
 
-  const [tournament] = await db
-    .select()
-    .from(tournaments)
-    .where(eq(tournaments.id, tournamentId))
-    .limit(1);
-
-  if (!tournament) return { error: "Турнир не найден" };
-  if (tournament.status === "completed") {
-    return { error: "Регистрация на этот турнир уже закрыта" };
-  }
-
-  const [{ value: approvedCount }] = await db
-    .select({ value: count() })
-    .from(registrations)
-    .where(and(eq(registrations.tournamentId, tournamentId), eq(registrations.status, "approved")));
-
-  if (tournament.maxPlayers && approvedCount >= tournament.maxPlayers) {
-    return { error: "Все места заняты" };
-  }
-
-  const duplicateConditions = [eq(registrations.phone, parsed.data.phone)];
-  if (parsed.data.email) duplicateConditions.push(eq(registrations.email, parsed.data.email));
-
-  const [existing] = await db
-    .select()
-    .from(registrations)
-    .where(
-      and(
-        eq(registrations.tournamentId, tournamentId),
-        or(...duplicateConditions),
-        or(eq(registrations.status, "pending"), eq(registrations.status, "approved")),
-      ),
-    )
-    .limit(1);
-
-  if (existing) {
-    return { error: "Вы уже подавали заявку на этот турнир" };
-  }
-
-  const cancelToken = randomUUID();
-
-  await db.insert(registrations).values({
+  const result = await createRegistration({
     tournamentId,
     name: parsed.data.name,
     phone: parsed.data.phone,
     email: parsed.data.email || null,
-    cancelToken,
-    status: "pending",
   });
+  if (result.error) return { error: result.error };
 
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
 
-  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-  if (adminChatId) {
-    const [inserted] = await db
-      .select({ id: registrations.id })
-      .from(registrations)
-      .where(eq(registrations.cancelToken, cancelToken))
-      .limit(1);
-    sendTelegramMessage(
-      adminChatId,
-      buildAdminNewRegistrationMessage({
-        name: parsed.data.name,
-        phone: parsed.data.phone,
-        email: parsed.data.email,
-        tournament,
-      }),
-      inserted
-        ? {
-            buttons: [
-              [
-                { text: "✅ Подтвердить", callback_data: `approve:${inserted.id}` },
-                { text: "❌ Отклонить", callback_data: `reject:${inserted.id}` },
-              ],
-            ],
-          }
-        : undefined,
-    ).catch((err) => console.error("[telegram] admin notify failed:", err));
-  }
-
   return {
     success: true,
-    cancelToken,
-    telegramLink: tournamentRegistrationDeepLink(cancelToken) ?? undefined,
+    cancelToken: result.cancelToken,
+    telegramLink: result.cancelToken
+      ? (tournamentRegistrationDeepLink(result.cancelToken) ?? undefined)
+      : undefined,
   };
 }
 
@@ -190,9 +121,10 @@ export async function adminSetRegistrationStatus(
   status: "pending" | "approved" | "rejected",
 ) {
   await requireAdmin();
-  await setRegistrationStatus(id, status);
+  const result = await setRegistrationStatus(id, status);
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
+  return result;
 }
 
 export interface AssignSeatsResult {

@@ -46,6 +46,7 @@ function RegistrationsList({
   const [list, setList] = useState<Registration[] | null>(null);
   const [seating, setSeating] = useState(false);
   const [seatingNote, setSeatingNote] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   useEffect(() => {
     adminListRegistrations(tournamentId).then(setList);
@@ -57,7 +58,8 @@ function RegistrationsList({
   }
 
   async function setStatus(id: number, status: "approved" | "rejected" | "pending") {
-    await adminSetRegistrationStatus(id, status);
+    const result = await adminSetRegistrationStatus(id, status);
+    setStatusError(result?.error ?? null);
     const fresh = await adminListRegistrations(tournamentId);
     setList(fresh);
   }
@@ -95,6 +97,11 @@ function RegistrationsList({
 
   return (
     <div className="flex flex-col gap-3">
+      {statusError && (
+        <p className="rounded-lg bg-[var(--danger)]/10 px-3 py-2 text-xs text-[var(--danger)]">
+          {statusError}
+        </p>
+      )}
       {hasTables && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] p-3">
           <div className="min-w-0 text-xs text-[var(--muted-foreground)]">

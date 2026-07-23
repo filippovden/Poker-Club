@@ -79,3 +79,72 @@ export function buildAdminNewRegistrationMessage(params: {
     `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}`
   );
 }
+
+export const MENU_LABELS = {
+  myRegistrations: "📋 Мои заявки",
+  nextTournament: "🃏 Ближайший турнир",
+  apply: "✍️ Подать заявку",
+} as const;
+
+export const MAIN_MENU_KEYBOARD = [
+  [MENU_LABELS.nextTournament, MENU_LABELS.apply],
+  [MENU_LABELS.myRegistrations],
+];
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "⏳ На рассмотрении",
+  approved: "✅ Подтверждена",
+  rejected: "❌ Отклонена",
+};
+
+export function buildMyRegistrationsMessage(
+  rows: { tournament: TournamentInfo; status: string }[],
+) {
+  if (rows.length === 0) {
+    return "У вас пока нет заявок. Нажмите «✍️ Подать заявку», чтобы записаться на ближайший турнир.";
+  }
+  const list = rows
+    .map(
+      ({ tournament, status }) =>
+        `🃏 <b>${escapeHtml(tournament.title)}</b>\n` +
+        `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}\n` +
+        `${STATUS_LABELS[status] ?? status}`,
+    )
+    .join("\n\n");
+  return `<b>Ваши заявки:</b>\n\n${list}`;
+}
+
+export function buildNextTournamentMessage(
+  tournament: TournamentInfo & { format: string; buyIn: number | null },
+  spotsLeft: number | null,
+) {
+  return (
+    `🃏 <b>${escapeHtml(tournament.title)}</b>\n` +
+    `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}\n` +
+    `💰 ${tournament.buyIn ? `${tournament.buyIn.toLocaleString("ru-RU")} ₽` : "Фриролл"} · ${escapeHtml(tournament.format)}\n` +
+    (spotsLeft !== null
+      ? spotsLeft > 0
+        ? `🪑 Осталось мест: ${spotsLeft}`
+        : `🪑 Мест нет — доступна запись в лист ожидания`
+      : "") +
+    `\n📍 ${escapeHtml(SITE_CONTENT.venue)}`
+  );
+}
+
+export function buildApplicationSummaryMessage(params: {
+  name: string;
+  phone: string;
+  email?: string | null;
+  tournament: TournamentInfo;
+}) {
+  const { name, phone, email, tournament } = params;
+  return (
+    `Проверьте данные перед отправкой:\n\n` +
+    `👤 ${escapeHtml(name)}\n` +
+    `📞 ${escapeHtml(phone)}\n` +
+    `✉️ ${email ? escapeHtml(email) : "—"}\n` +
+    `🃏 ${escapeHtml(tournament.title)}\n` +
+    `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}\n\n` +
+    `Отправляя заявку, вы соглашаетесь на обработку персональных данных и подтверждаете, что вам исполнилось 18 лет.`
+  );
+}

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { registrations, tournaments } from "@/lib/db/schema";
 import { sendTelegramMessage } from "@/lib/telegram/client";
@@ -24,6 +24,28 @@ export async function setRegistrationStatus(
     .limit(1);
   if (!registration) return { error: "Заявка не найдена — возможно, уже отозвана" };
 
+  const [tournament] = await db
+    .select()
+    .from(tournaments)
+    .where(eq(tournaments.id, registration.tournamentId))
+    .limit(1);
+
+  // Applications aren't capped (they queue up as a waitlist once seats run
+  // out — see lib/registrations/create.ts), so the real limit has to be
+  // enforced here, at the moment someone is actually confirmed a seat —
+  // otherwise a quick tap on the Telegram button could overbook a tournament.
+  if (status === "approved" && registration.status !== "approved" && tournament?.maxPlayers) {
+    const [{ value: approvedCount }] = await db
+      .select({ value: count() })
+      .from(registrations)
+      .where(
+        and(eq(registrations.tournamentId, registration.tournamentId), eq(registrations.status, "approved")),
+      );
+    if (approvedCount >= tournament.maxPlayers) {
+      return { error: "Все места заняты — сначала освободите место (отмените другую заявку)" };
+    }
+  }
+
   const patch: Partial<typeof registrations.$inferInsert> = { status };
   if (status !== "approved") {
     patch.tableNumber = null;
@@ -31,19 +53,12 @@ export async function setRegistrationStatus(
   }
   await db.update(registrations).set(patch).where(eq(registrations.id, id));
 
-  if ((status === "approved" || status === "rejected") && registration.telegramChatId) {
-    const [tournament] = await db
-      .select()
-      .from(tournaments)
-      .where(eq(tournaments.id, registration.tournamentId))
-      .limit(1);
-    if (tournament) {
-      const text =
-        status === "approved" ? buildApprovedMessage(tournament) : buildRejectedMessage(tournament);
-      sendTelegramMessage(registration.telegramChatId, text).catch((err) =>
-        console.error("[telegram] status notify failed:", err),
-      );
-    }
+  if ((status === "approved" || status === "rejected") && registration.telegramChatId && tournament) {
+    const text =
+      status === "approved" ? buildApprovedMessage(tournament) : buildRejectedMessage(tournament);
+    sendTelegramMessage(registration.telegramChatId, text).catch((err) =>
+      console.error("[telegram] status notify failed:", err),
+    );
   }
 
   return { status };

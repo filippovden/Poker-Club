@@ -50,13 +50,19 @@ async function callApi(method: string, body: Record<string, unknown>) {
 export async function sendTelegramMessage(
   chatId: string | number,
   text: string,
-  options?: { buttons?: TelegramInlineKeyboardButton[][] },
+  options?: { buttons?: TelegramInlineKeyboardButton[][]; replyKeyboard?: string[][] },
 ) {
+  let replyMarkup: unknown;
+  if (options?.buttons) {
+    replyMarkup = { inline_keyboard: options.buttons };
+  } else if (options?.replyKeyboard) {
+    replyMarkup = { keyboard: options.replyKeyboard, resize_keyboard: true };
+  }
   const result = await callApi("sendMessage", {
     chat_id: chatId,
     text,
     parse_mode: "HTML",
-    reply_markup: options?.buttons ? { inline_keyboard: options.buttons } : undefined,
+    reply_markup: replyMarkup,
   });
   return result?.result as { message_id: number } | undefined;
 }

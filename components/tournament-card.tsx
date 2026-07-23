@@ -109,7 +109,7 @@ export function TournamentCard({
 
       {spotsLeft !== null && !isPast && (
         <span className={`text-xs ${isFull ? "text-[var(--danger)]" : "text-[var(--muted-foreground)]"}`}>
-          {isFull ? "Все места заняты" : `Осталось мест: ${spotsLeft}`}
+          {isFull ? "Все места заняты — открыт лист ожидания" : `Осталось мест: ${spotsLeft}`}
         </span>
       )}
 
@@ -117,13 +117,16 @@ export function TournamentCard({
         <div className="flex flex-col gap-1.5">
           <Button
             size="sm"
-            disabled={isFull}
             onClick={() => setDialogOpen(true)}
             className="w-full"
           >
-            {isFull ? "Мест нет" : "Подать заявку"}
+            {isFull ? "Встать в лист ожидания" : "Подать заявку"}
           </Button>
-          {!isFull && (
+          {isFull ? (
+            <p className="text-center text-[11px] text-[var(--muted-foreground)]">
+              Мест нет, но если кто-то отменит заявку — свяжемся с вами
+            </p>
+          ) : (
             <p className="text-center text-[11px] text-[var(--muted-foreground)]">
               Заявка на рассмотрение — организаторы свяжутся с вами для подтверждения
             </p>
