@@ -3,9 +3,13 @@ import { Reveal, RevealGroup, RevealItem } from "@/components/reveal";
 import { Badge } from "@/components/ui/badge";
 import { SITE_CONTENT } from "@/lib/content";
 
+const ABOUT_DESCRIPTION = `${SITE_CONTENT.clubName} — покерный клуб в Тольятти. История клуба, правила и этикет за столом, контакты.`;
+
 export const metadata: Metadata = {
   title: "О клубе",
-  description: `История клуба ${SITE_CONTENT.clubName}, правила и этикет за столом, контакты.`,
+  description: ABOUT_DESCRIPTION,
+  alternates: { canonical: "/about" },
+  openGraph: { title: `О клубе — ${SITE_CONTENT.clubName}`, description: ABOUT_DESCRIPTION },
 };
 
 const FORMATS = [

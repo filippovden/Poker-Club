@@ -7,9 +7,13 @@ import { Reveal, RevealGroup, RevealItem } from "@/components/reveal";
 import { DecorativeScene } from "@/components/decorative-scene";
 import { SITE_CONTENT } from "@/lib/content";
 
+const NEWS_DESCRIPTION = `Анонсы турниров, результаты и новости покерного клуба ${SITE_CONTENT.clubName} в Тольятти.`;
+
 export const metadata: Metadata = {
   title: "Новости",
-  description: `Анонсы турниров, отчёты о прошедших событиях и новости клуба ${SITE_CONTENT.clubName}.`,
+  description: NEWS_DESCRIPTION,
+  alternates: { canonical: "/news" },
+  openGraph: { title: `Новости — ${SITE_CONTENT.clubName}`, description: NEWS_DESCRIPTION },
 };
 
 export const revalidate = 0;
@@ -52,7 +56,7 @@ export default async function NewsPage() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={featured.coverImage}
-                  alt=""
+                  alt={featured.title}
                   className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
               ) : (

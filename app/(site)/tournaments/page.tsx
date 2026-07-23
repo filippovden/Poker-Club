@@ -9,9 +9,13 @@ import { getSeatAssignments } from "@/lib/db/seat-assignments";
 import { getTournamentResults } from "@/lib/db/tournament-results";
 import { SITE_CONTENT } from "@/lib/content";
 
+const TOURNAMENTS_DESCRIPTION = `Расписание турниров по покеру в Тольятти — ${SITE_CONTENT.clubName}: No-Limit Hold'em, Pot-Limit Omaha и многостоловые турниры каждую неделю.`;
+
 export const metadata: Metadata = {
-  title: "Турниры",
-  description: `Расписание турниров ${SITE_CONTENT.clubName}: No-Limit Hold'em, Pot-Limit Omaha и многостоловые турниры.`,
+  title: "Турниры по покеру в Тольятти",
+  description: TOURNAMENTS_DESCRIPTION,
+  alternates: { canonical: "/tournaments" },
+  openGraph: { title: `Турниры — ${SITE_CONTENT.clubName}`, description: TOURNAMENTS_DESCRIPTION },
 };
 
 export const revalidate = 0;

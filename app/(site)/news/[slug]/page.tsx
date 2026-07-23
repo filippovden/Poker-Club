@@ -23,9 +23,18 @@ export async function generateMetadata({
   const article = await getArticle(slug);
   if (!article) return { title: "Новость не найдена" };
 
+  const description = article.excerpt ?? article.content.slice(0, 160);
   return {
     title: article.title,
-    description: article.excerpt ?? article.content.slice(0, 160),
+    description,
+    alternates: { canonical: `/news/${slug}` },
+    openGraph: {
+      type: "article",
+      title: article.title,
+      description,
+      publishedTime: article.publishedAt,
+      images: article.coverImage ? [article.coverImage] : undefined,
+    },
   };
 }
 
@@ -66,7 +75,7 @@ export default async function NewsArticlePage({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={article.coverImage}
-            alt=""
+            alt={article.title}
             className="mt-8 aspect-[16/10] w-full rounded-2xl border border-[var(--border)] object-cover"
           />
         )}

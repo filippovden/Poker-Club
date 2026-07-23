@@ -20,19 +20,61 @@ const displayFont = Unbounded({
   display: "swap",
 });
 
+const DEFAULT_TITLE = `${SITE_CONTENT.clubName} — покерный клуб в Тольятти`;
+const DEFAULT_DESCRIPTION =
+  "Закрытый клуб турнирного покера в Тольятти. Живые турниры по No-Limit Hold'em и Pot-Limit Omaha каждую неделю — запись на сайте и в Telegram.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(`https://${SITE_CONTENT.domain}`),
   title: {
-    default: `${SITE_CONTENT.clubName} — турнирный покер-клуб`,
+    default: DEFAULT_TITLE,
     template: `%s — ${SITE_CONTENT.clubName}`,
   },
-  description:
-    "Закрытый клуб турнирного покера. Живые турниры по No-Limit Hold'em и Pot-Limit Omaha каждую неделю.",
+  description: DEFAULT_DESCRIPTION,
+  keywords: [
+    "покерный клуб Тольятти",
+    "турниры по покеру Тольятти",
+    "Royal63",
+    "No-Limit Hold'em",
+    "Pot-Limit Omaha",
+    "покер турниры",
+  ],
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/favicon.svg",
     apple: "/apple-touch-icon.png",
   },
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "ru_RU",
+    siteName: SITE_CONTENT.clubName,
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+  },
+};
+
+const localBusinessJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SportsActivityLocation",
+  name: SITE_CONTENT.clubName,
+  description: DEFAULT_DESCRIPTION,
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: SITE_CONTENT.venue,
+    addressLocality: "Тольятти",
+    addressCountry: "RU",
+  },
+  url: `https://${SITE_CONTENT.domain}`,
+  sameAs: [`https://t.me/${SITE_CONTENT.contacts.telegram.replace(/^@/, "")}`],
 };
 
 export const viewport: Viewport = {
@@ -54,6 +96,10 @@ export default function RootLayout({
     >
       <head>
         <ThemeScript />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
+        />
       </head>
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
         <AgeGate />
