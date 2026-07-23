@@ -5,33 +5,84 @@ function apiUrl(method: string) {
   return `${API_BASE}/bot${token}/${method}`;
 }
 
+export interface TelegramInlineKeyboardButton {
+  text: string;
+  callback_data: string;
+}
+
 export interface TelegramUpdate {
   update_id: number;
   message?: {
     chat: { id: number };
     text?: string;
   };
+  callback_query?: {
+    id: string;
+    data?: string;
+    from: { first_name?: string; username?: string };
+    message?: {
+      chat: { id: number };
+      message_id: number;
+      text?: string;
+    };
+  };
 }
 
-export async function sendTelegramMessage(chatId: string | number, text: string) {
-  if (!process.env.TELEGRAM_BOT_TOKEN) return;
+async function callApi(method: string, body: Record<string, unknown>) {
+  if (!process.env.TELEGRAM_BOT_TOKEN) return null;
   try {
-    const res = await fetch(apiUrl("sendMessage"), {
+    const res = await fetch(apiUrl(method), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
-      console.error("[telegram] sendMessage failed:", res.status, await res.text());
+      console.error(`[telegram] ${method} failed:`, res.status, await res.text());
+      return null;
     }
+    return await res.json();
   } catch (err) {
-    console.error("[telegram] sendMessage error:", err);
+    console.error(`[telegram] ${method} error:`, err);
+    return null;
   }
+}
+
+export async function sendTelegramMessage(
+  chatId: string | number,
+  text: string,
+  options?: { buttons?: TelegramInlineKeyboardButton[][] },
+) {
+  const result = await callApi("sendMessage", {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    reply_markup: options?.buttons ? { inline_keyboard: options.buttons } : undefined,
+  });
+  return result?.result as { message_id: number } | undefined;
+}
+
+export async function answerCallbackQuery(callbackQueryId: string, text?: string) {
+  await callApi("answerCallbackQuery", { callback_query_id: callbackQueryId, text });
+}
+
+export async function editMessageText(
+  chatId: string | number,
+  messageId: number,
+  text: string,
+  options?: { removeButtons?: boolean },
+) {
+  await callApi("editMessageText", {
+    chat_id: chatId,
+    message_id: messageId,
+    text,
+    parse_mode: "HTML",
+    reply_markup: options?.removeButtons ? { inline_keyboard: [] } : undefined,
+  });
 }
 
 export async function getTelegramUpdates(offset: number, timeoutSeconds: number) {
   const res = await fetch(
-    `${apiUrl("getUpdates")}?offset=${offset}&timeout=${timeoutSeconds}`,
+    `${apiUrl("getUpdates")}?offset=${offset}&timeout=${timeoutSeconds}&allowed_updates=["message","callback_query"]`,
     // Long-poll requests wait up to `timeout` seconds on Telegram's side —
     // give fetch a little extra room before it gives up on its own.
     { signal: AbortSignal.timeout((timeoutSeconds + 10) * 1000) },

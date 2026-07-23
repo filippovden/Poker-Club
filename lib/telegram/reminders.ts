@@ -2,17 +2,7 @@ import { and, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { registrations, tournaments } from "@/lib/db/schema";
 import { sendTelegramMessage } from "./client";
-
-function formatDate(iso: string) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString("ru-RU", {
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { buildReminderMessage } from "./messages";
 
 // Ordered largest-first so a registration that's gone quiet for a while
 // (e.g. the bot was down) catches up through each unsent reminder in one
@@ -51,7 +41,7 @@ export async function checkReminders() {
 
       await sendTelegramMessage(
         registration.telegramChatId!,
-        `Напоминаем: турнир «${tournament.title}» начнётся ${threshold.phrase} (${formatDate(tournament.startsAt)}).`,
+        buildReminderMessage(tournament, threshold.phrase),
       );
       await db
         .update(registrations)
