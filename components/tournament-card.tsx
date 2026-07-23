@@ -13,6 +13,7 @@ import {
 import { RegistrationDialog } from "@/components/tournaments/registration-dialog";
 import { SeatingGrid } from "@/components/tournaments/seating-grid";
 import { ShareButton } from "@/components/share-button";
+import { AddToCalendarButton } from "@/components/add-to-calendar-button";
 import { SITE_CONTENT } from "@/lib/content";
 import type { Tournament } from "@/lib/db/schema";
 import type { SeatAssignment } from "@/lib/db/seat-assignments";
@@ -83,6 +84,12 @@ export function TournamentCard({
           <span className="text-xs text-[var(--muted-foreground)]">
             {formatDate(tournament.startsAt)}
           </span>
+          {!isPast && (
+            <AddToCalendarButton
+              tournament={tournament}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted-foreground)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+            />
+          )}
           <ShareButton
             title={`${tournament.title} — ${SITE_CONTENT.clubName}`}
             url="/tournaments"
