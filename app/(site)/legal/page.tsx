@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Reveal } from "@/components/reveal";
+import { SITE_CONTENT } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "Правовая информация",
-  description: "Политика обработки персональных данных и правовая информация Lockdown Poker.",
+  description: `Политика обработки персональных данных и правовая информация ${SITE_CONTENT.clubName}.`,
 };
 
 export default function LegalPage() {

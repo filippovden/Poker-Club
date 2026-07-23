@@ -67,8 +67,8 @@ export async function seedSampleData() {
 
   if (existingNews.length === 0) {
     await db.insert(news).values({
-      title: "Добро пожаловать в Lockdown Poker",
-      slug: "dobro-pozhalovat-v-lockdown-poker",
+      title: "Добро пожаловать в Royal63",
+      slug: "dobro-pozhalovat-v-royal63",
       excerpt: "Мы запустили новый сайт клуба.",
       content:
         "Мы запустили новый сайт клуба.\nСледите за расписанием турниров и новостями здесь.",

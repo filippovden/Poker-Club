@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction, type LoginState } from "@/lib/actions/auth";
+import { SITE_CONTENT } from "@/lib/content";
 
 const initialState: LoginState = {};
 
@@ -17,7 +18,7 @@ export default function AdminLoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center px-6">
       <Link href="/" className="mb-10 flex items-center gap-2.5">
         <LogoMark className="h-7 w-7 text-[var(--foreground)]" />
-        <span className="font-display text-base font-medium">Lockdown Poker</span>
+        <span className="font-display text-base font-medium">{SITE_CONTENT.clubName}</span>
       </Link>
 
       <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-8">

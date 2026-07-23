@@ -1,9 +1,10 @@
 import type { MetadataRoute } from "next";
+import { SITE_CONTENT } from "@/lib/content";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Lockdown Poker",
-    short_name: "Lockdown Poker",
+    name: SITE_CONTENT.clubName,
+    short_name: SITE_CONTENT.clubName,
     description: "Клуб турнирного покера. Живые турниры каждую неделю.",
     start_url: "/",
     display: "standalone",

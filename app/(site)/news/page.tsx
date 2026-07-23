@@ -5,10 +5,11 @@ import { db } from "@/lib/db/client";
 import { news } from "@/lib/db/schema";
 import { Reveal, RevealGroup, RevealItem } from "@/components/reveal";
 import { DecorativeScene } from "@/components/decorative-scene";
+import { SITE_CONTENT } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "Новости",
-  description: "Анонсы турниров, отчёты о прошедших событиях и новости клуба Lockdown Poker.",
+  description: `Анонсы турниров, отчёты о прошедших событиях и новости клуба ${SITE_CONTENT.clubName}.`,
 };
 
 export const revalidate = 0;

@@ -5,6 +5,7 @@ import { ThemeScript } from "@/components/theme-script";
 import { CustomCursor } from "@/components/custom-cursor";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import { AgeGate } from "@/components/age-gate";
+import { SITE_CONTENT } from "@/lib/content";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -20,10 +21,10 @@ const displayFont = Unbounded({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://lockdownpoker.club"),
+  metadataBase: new URL(`https://${SITE_CONTENT.domain}`),
   title: {
-    default: "Lockdown Poker — турнирный покер-клуб",
-    template: "%s — Lockdown Poker",
+    default: `${SITE_CONTENT.clubName} — турнирный покер-клуб`,
+    template: `%s — ${SITE_CONTENT.clubName}`,
   },
   description:
     "Закрытый клуб турнирного покера. Живые турниры по No-Limit Hold'em и Pot-Limit Omaha каждую неделю.",

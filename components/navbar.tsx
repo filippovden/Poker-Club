@@ -9,6 +9,7 @@ import { LogoMark } from "./logo-mark";
 import { ThemeToggle } from "./theme-toggle";
 import { SoundToggle } from "./sound-toggle";
 import { cn } from "@/lib/utils";
+import { SITE_CONTENT } from "@/lib/content";
 
 const LINKS = [
   { href: "/tournaments", label: "Турниры" },
@@ -54,7 +55,7 @@ export function Navbar() {
         <Link href="/" className="flex items-center gap-2.5">
           <LogoMark className="h-6 w-6 text-white" />
           <span className="font-display text-sm font-medium tracking-tight text-white">
-            Lockdown Poker
+            {SITE_CONTENT.clubName}
           </span>
         </Link>
 

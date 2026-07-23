@@ -6,11 +6,11 @@ import { TournamentsClient } from "@/components/tournaments/tournaments-client";
 import { Reveal } from "@/components/reveal";
 import { getRegistrationCounts } from "@/lib/db/registration-counts";
 import { getSeatAssignments } from "@/lib/db/seat-assignments";
+import { SITE_CONTENT } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "Турниры",
-  description:
-    "Расписание турниров Lockdown Poker: No-Limit Hold'em, Pot-Limit Omaha и многостоловые турниры.",
+  description: `Расписание турниров ${SITE_CONTENT.clubName}: No-Limit Hold'em, Pot-Limit Omaha и многостоловые турниры.`,
 };
 
 export const revalidate = 0;

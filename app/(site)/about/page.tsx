@@ -5,7 +5,7 @@ import { SITE_CONTENT } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "О клубе",
-  description: "История клуба Lockdown Poker, правила и этикет за столом, контакты.",
+  description: `История клуба ${SITE_CONTENT.clubName}, правила и этикет за столом, контакты.`,
 };
 
 const FORMATS = [
@@ -23,7 +23,7 @@ export default function AboutPage() {
 
       <Reveal delay={0.05}>
         <h1 className="font-display text-[clamp(2rem,6vw,3.5rem)] font-medium tracking-tight">
-          Lockdown Poker
+          {SITE_CONTENT.clubName}
         </h1>
         <p className="mt-6 max-w-xl text-lg leading-relaxed text-[var(--muted-foreground)]">
           {SITE_CONTENT.about.story}

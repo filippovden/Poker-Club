@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db/client";
 import { news } from "@/lib/db/schema";
+import { SITE_CONTENT } from "@/lib/content";
 
-const BASE_URL = "https://lockdownpoker.club";
+const BASE_URL = `https://${SITE_CONTENT.domain}`;
 
 export const revalidate = 3600;
 

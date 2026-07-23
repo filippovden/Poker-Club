@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LogoMark } from "@/components/logo-mark";
+import { SITE_CONTENT } from "@/lib/content";
 
 function confirmAge() {
   try {
@@ -34,8 +35,8 @@ export function AgeGate() {
           Подтверждение возраста
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-white/60">
-          Этот сайт и участие в турнирах Lockdown Poker доступны только лицам,
-          достигшим 18&nbsp;лет.
+          Этот сайт и участие в турнирах {SITE_CONTENT.clubName} доступны только
+          лицам, достигшим 18&nbsp;лет.
         </p>
 
         <label className="mt-6 flex items-start gap-2.5 rounded-lg border border-white/10 bg-white/5 p-3 text-left text-sm text-white/80">
