@@ -1,20 +1,23 @@
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { tournaments } from "@/lib/db/schema";
 import { Reveal, RevealGroup, RevealItem } from "@/components/reveal";
 import { TournamentCard } from "@/components/tournament-card";
 import { Button } from "@/components/ui/button";
+import { Countdown } from "./countdown";
 import { getRegistrationCounts } from "@/lib/db/registration-counts";
 import { getSeatAssignments } from "@/lib/db/seat-assignments";
 
 export async function LiveTournamentsSection() {
   const [upcoming, registrationCounts, seatAssignments] = await Promise.all([
+    // Soonest first — this is a "coming up next" teaser, so the furthest-out
+    // events (what `desc` used to surface here) aren't what belongs on top.
     db
       .select()
       .from(tournaments)
       .where(eq(tournaments.status, "upcoming"))
-      .orderBy(desc(tournaments.startsAt))
+      .orderBy(asc(tournaments.startsAt))
       .limit(3),
     getRegistrationCounts(),
     getSeatAssignments(),
@@ -36,6 +39,12 @@ export async function LiveTournamentsSection() {
             <Link href="/tournaments">Всё расписание →</Link>
           </Button>
         </Reveal>
+
+        {upcoming.length > 0 && (
+          <Reveal className="mb-8">
+            <Countdown targetIso={upcoming[0].startsAt} />
+          </Reveal>
+        )}
 
         {upcoming.length === 0 ? (
           <p className="text-sm text-[var(--muted-foreground)]">

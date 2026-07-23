@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { db } from "@/lib/db/client";
 import { news } from "@/lib/db/schema";
 import { Reveal } from "@/components/reveal";
+import { ShareButton } from "@/components/share-button";
 
 export const revalidate = 0;
 
@@ -41,7 +42,12 @@ export async function generateMetadata({
 function formatDate(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+  return date.toLocaleDateString("ru-RU", {
+    timeZone: "Europe/Moscow",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 export default async function NewsArticlePage({
@@ -64,9 +70,12 @@ export default async function NewsArticlePage({
           Все новости
         </Link>
 
-        <span className="text-xs text-[var(--muted-foreground)]">
-          {formatDate(article.publishedAt)}
-        </span>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-[var(--muted-foreground)]">
+            {formatDate(article.publishedAt)}
+          </span>
+          <ShareButton title={article.title} url={`/news/${slug}`} />
+        </div>
         <h1 className="font-display mt-3 text-[clamp(1.75rem,4vw,3rem)] font-medium leading-tight tracking-tight">
           {article.title}
         </h1>

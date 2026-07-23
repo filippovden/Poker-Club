@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { RegistrationDialog } from "@/components/tournaments/registration-dialog";
 import { SeatingGrid } from "@/components/tournaments/seating-grid";
+import { ShareButton } from "@/components/share-button";
+import { SITE_CONTENT } from "@/lib/content";
 import type { Tournament } from "@/lib/db/schema";
 import type { SeatAssignment } from "@/lib/db/seat-assignments";
 import type { TournamentResultRow } from "@/lib/db/tournament-results";
@@ -33,7 +35,12 @@ const STATUS_LABELS: Record<Tournament["status"], string> = {
 function formatDate(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
+  // Fixed to the venue's own timezone — without this, the server (SSR) and
+  // each visitor's browser (hydration) can disagree on the local offset,
+  // producing a hydration mismatch and, worse, showing out-of-town visitors
+  // their own local time instead of the actual time in Тольятти.
   return date.toLocaleString("ru-RU", {
+    timeZone: "Europe/Moscow",
     day: "numeric",
     month: "long",
     hour: "2-digit",
@@ -72,9 +79,16 @@ export function TournamentCard({
           )}
           {STATUS_LABELS[tournament.status]}
         </Badge>
-        <span className="text-xs text-[var(--muted-foreground)]">
-          {formatDate(tournament.startsAt)}
-        </span>
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-[var(--muted-foreground)]">
+            {formatDate(tournament.startsAt)}
+          </span>
+          <ShareButton
+            title={`${tournament.title} — ${SITE_CONTENT.clubName}`}
+            url="/tournaments"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted-foreground)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+          />
+        </div>
       </div>
 
       <div>

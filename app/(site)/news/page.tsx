@@ -21,7 +21,12 @@ export const revalidate = 0;
 function formatDate(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+  return date.toLocaleDateString("ru-RU", {
+    timeZone: "Europe/Moscow",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 export default async function NewsPage() {

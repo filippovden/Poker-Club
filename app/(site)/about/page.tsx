@@ -18,6 +18,36 @@ const FORMATS = [
   { code: "MTT", name: "Многостоловый турнир", text: "Гарантированный призовой фонд, несколько столов." },
 ];
 
+const FAQ = [
+  {
+    question: "Как записаться на турнир?",
+    answer:
+      "Через сайт (страница «Турниры» → «Подать заявку») или прямо в Telegram-боте — короткая анкета: имя, телефон, email. После этого организаторы свяжутся с вами и подтвердят участие.",
+  },
+  {
+    question: "Нужно ли платить при онлайн-заявке?",
+    answer: "Нет, заявка — это бронирование места. Бай-ин оплачивается на месте перед началом турнира.",
+  },
+  {
+    question: "Можно ли отменить заявку?",
+    answer:
+      "Да, в любой момент — по ссылке из подтверждения или командой /cancel в Telegram-боте.",
+  },
+  {
+    question: "Со скольки лет можно участвовать?",
+    answer: "Участие в турнирах клуба доступно только лицам, достигшим 18 лет.",
+  },
+  {
+    question: "Что если все места заняты?",
+    answer:
+      "Заявка всё равно принимается и встаёт в лист ожидания — если кто-то отменит участие, организаторы свяжутся со следующим в очереди.",
+  },
+  {
+    question: "Какой дресс-код?",
+    answer: "Свободный стиль, без спортивной обуви и головных уборов в игровой зоне.",
+  },
+];
+
 export default function AboutPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-28 sm:py-32">
@@ -72,6 +102,45 @@ export default function AboutPage() {
             {SITE_CONTENT.about.etiquette}
           </p>
         </Reveal>
+      </section>
+
+      <section className="mt-20">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: FAQ.map((item) => ({
+                "@type": "Question",
+                name: item.question,
+                acceptedAnswer: { "@type": "Answer", text: item.answer },
+              })),
+            }),
+          }}
+        />
+        <Reveal>
+          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+            Частые вопросы
+          </h2>
+        </Reveal>
+        <RevealGroup className="mt-6 flex flex-col gap-3">
+          {FAQ.map((item) => (
+            <RevealItem key={item.question}>
+              <details className="group rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 open:pb-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium marker:content-['']">
+                  {item.question}
+                  <span className="shrink-0 text-[var(--muted-foreground)] transition-transform group-open:rotate-45">
+                    +
+                  </span>
+                </summary>
+                <p className="mt-3 leading-relaxed text-[var(--muted-foreground)]">
+                  {item.answer}
+                </p>
+              </details>
+            </RevealItem>
+          ))}
+        </RevealGroup>
       </section>
 
       <section className="mt-20">
