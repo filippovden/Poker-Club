@@ -13,11 +13,16 @@ function getParts(targetIso: string) {
 }
 
 export function Countdown({ targetIso }: { targetIso: string }) {
+  // Starts as null on both server and client (rather than computing
+  // getParts(targetIso) eagerly) so the very first paint matches on both
+  // sides — Date.now() differs by however long hydration takes, which
+  // would otherwise be a hydration mismatch on this exact text every time.
   const [parts, setParts] = useState<ReturnType<typeof getParts>>(null);
 
   useEffect(() => {
-    setParts(getParts(targetIso));
-    const id = setInterval(() => setParts(getParts(targetIso)), 1000);
+    const tick = () => setParts(getParts(targetIso));
+    const id = setInterval(tick, 1000);
+    tick();
     return () => clearInterval(id);
   }, [targetIso]);
 

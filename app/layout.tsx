@@ -5,6 +5,7 @@ import { ThemeScript } from "@/components/theme-script";
 import { CustomCursor } from "@/components/custom-cursor";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import { AgeGate } from "@/components/age-gate";
+import { ScrollToTop } from "@/components/scroll-to-top";
 import { SITE_CONTENT } from "@/lib/content";
 
 const inter = Inter({
@@ -106,6 +107,7 @@ export default function RootLayout({
         <CustomCursor />
         <ServiceWorkerRegister />
         {children}
+        <ScrollToTop />
       </body>
     </html>
   );

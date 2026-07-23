@@ -34,13 +34,23 @@ interface TournamentInfo {
   startsAt: string;
 }
 
+// A clickable Yandex Maps link rather than a public map embed on the
+// website — the exact address is only ever shared with people who've
+// actually applied (via the bot), so it stays out of search engines and
+// off the public page, but whoever DOES get it can still tap straight
+// into navigation.
+function venueLine() {
+  const url = `https://yandex.ru/maps/?text=${encodeURIComponent(SITE_CONTENT.venue)}`;
+  return `📍 <a href="${url}">${escapeHtml(SITE_CONTENT.venue)}</a>`;
+}
+
 export function buildRegisteredMessage(name: string, tournament: TournamentInfo) {
   return (
     `🎉 <b>Заявка принята!</b>\n\n` +
     `👤 ${escapeHtml(name)}\n` +
     `🃏 ${escapeHtml(tournament.title)}\n` +
     `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}\n` +
-    `📍 ${escapeHtml(SITE_CONTENT.venue)}\n\n` +
+    `${venueLine()}\n\n` +
     `Организаторы свяжутся с вами для подтверждения — как только решение будет принято, напишем сюда же.`
   );
 }
@@ -51,7 +61,7 @@ export function buildApprovedMessage(tournament: TournamentInfo) {
     `Ждём вас:\n` +
     `🃏 ${escapeHtml(tournament.title)}\n` +
     `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}\n` +
-    `📍 ${escapeHtml(SITE_CONTENT.venue)}`
+    `${venueLine()}`
   );
 }
 
@@ -66,7 +76,7 @@ export function buildReminderMessage(tournament: TournamentInfo, phrase: string)
   return (
     `⏰ Напоминаем: <b>${escapeHtml(tournament.title)}</b> начнётся ${phrase} ` +
     `(${formatDateOnly(tournament.startsAt)} в ${formatTimeOnly(tournament.startsAt)}).\n` +
-    `📍 ${escapeHtml(SITE_CONTENT.venue)}`
+    `${venueLine()}`
   );
 }
 
@@ -134,7 +144,7 @@ export function buildNextTournamentMessage(
         ? `🪑 Осталось мест: ${spotsLeft}`
         : `🪑 Мест нет — доступна запись в лист ожидания`
       : "") +
-    `\n📍 ${escapeHtml(SITE_CONTENT.venue)}`
+    `\n${venueLine()}`
   );
 }
 

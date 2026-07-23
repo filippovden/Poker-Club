@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db/client";
 import { tournaments } from "@/lib/db/schema";
-import { desc } from "drizzle-orm";
 import { TournamentsClient } from "@/components/tournaments/tournaments-client";
 import { Reveal } from "@/components/reveal";
 import { getRegistrationCounts } from "@/lib/db/registration-counts";
@@ -21,12 +20,24 @@ export const metadata: Metadata = {
 export const revalidate = 0;
 
 export default async function TournamentsPage() {
-  const [all, registrationCounts, seatAssignments, results] = await Promise.all([
-    db.select().from(tournaments).orderBy(desc(tournaments.startsAt)),
+  const [fetched, registrationCounts, seatAssignments, results] = await Promise.all([
+    db.select().from(tournaments),
     getRegistrationCounts(),
     getSeatAssignments(),
     getTournamentResults(),
   ]);
+
+  // Upcoming/live first (soonest next), completed last (most recent first)
+  // — a plain date sort would otherwise mix a far-future tournament in
+  // above one starting tomorrow, or bury it under old completed ones.
+  const all = [...fetched].sort((a, b) => {
+    const aPast = a.status === "completed";
+    const bPast = b.status === "completed";
+    if (aPast !== bPast) return aPast ? 1 : -1;
+    const aTime = new Date(a.startsAt).getTime();
+    const bTime = new Date(b.startsAt).getTime();
+    return aPast ? bTime - aTime : aTime - bTime;
+  });
 
   const upcomingEvents = all
     .filter((t) => t.status !== "completed")
