@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Unbounded } from "next/font/google";
 import "./globals.css";
 import { ThemeScript } from "@/components/theme-script";
+import { Analytics } from "@/components/analytics";
 import { CustomCursor } from "@/components/custom-cursor";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import { AgeGate } from "@/components/age-gate";
@@ -97,6 +98,7 @@ export default function RootLayout({
     >
       <head>
         <ThemeScript />
+        <Analytics />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
