@@ -31,6 +31,21 @@ async function getNextTournament(): Promise<Tournament | null> {
   return tournament ?? null;
 }
 
+async function buildCancelButtons(rows: { id: number; tournamentId: number }[]) {
+  return Promise.all(
+    rows.map(async (r) => {
+      const [tournament] = await db
+        .select()
+        .from(tournaments)
+        .where(eq(tournaments.id, r.tournamentId))
+        .limit(1);
+      return [
+        { text: `❌ Отменить: ${tournament?.title ?? `заявка #${r.id}`}`, callback_data: `cancel:${r.id}` },
+      ];
+    }),
+  );
+}
+
 async function getSpotsLeft(tournament: Tournament): Promise<number | null> {
   if (tournament.maxPlayers == null) return null;
   const [{ value: approvedCount }] = await db
@@ -202,6 +217,15 @@ async function handleMyRegistrations(chatId: number) {
     buildMyRegistrationsMessage(withTournaments.filter((r) => r !== null)),
     { replyKeyboard: MAIN_MENU_KEYBOARD },
   );
+
+  // Only pending/approved registrations can still be cancelled — offer a
+  // button per one, same cancel:<id> callback the /cancel command uses.
+  const cancellable = rows.filter((r) => r.status === "pending" || r.status === "approved");
+  if (cancellable.length === 0) return;
+
+  await sendTelegramMessage(chatId, "Отменить одну из заявок:", {
+    buttons: await buildCancelButtons(cancellable),
+  });
 }
 
 async function handleNextTournamentInfo(chatId: number) {
@@ -243,20 +267,8 @@ async function handleCancelCommand(chatId: number) {
     return;
   }
 
-  const buttons = await Promise.all(
-    active.map(async (r) => {
-      const [tournament] = await db
-        .select()
-        .from(tournaments)
-        .where(eq(tournaments.id, r.tournamentId))
-        .limit(1);
-      return [
-        { text: tournament?.title ?? `Заявка #${r.id}`, callback_data: `cancel:${r.id}` },
-      ];
-    }),
-  );
   await sendTelegramMessage(chatId, "У вас несколько активных заявок. Какую отменить?", {
-    buttons,
+    buttons: await buildCancelButtons(active),
   });
 }
 
