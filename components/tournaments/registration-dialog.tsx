@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CardBurst } from "@/components/tournaments/card-burst";
 import {
   registerForTournamentAction,
   type RegisterResult,
@@ -46,6 +47,18 @@ export function RegistrationDialog({
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [burstKey, setBurstKey] = useState(0);
+  // Bump burstKey the moment state.success first turns true, mirroring the
+  // "adjust state during render" pattern (see navbar.tsx's prevPathname)
+  // rather than an effect — avoids an extra render pass for what's really
+  // just derived state.
+  const [wasSuccess, setWasSuccess] = useState(false);
+  if (state.success && !wasSuccess) {
+    setWasSuccess(true);
+    setBurstKey((k) => k + 1);
+  } else if (!state.success && wasSuccess) {
+    setWasSuccess(false);
+  }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     // Always take over submission manually (rather than letting the form's
@@ -99,7 +112,8 @@ export function RegistrationDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent>
         {state.success ? (
-          <>
+          <div className="relative">
+            <CardBurst playKey={burstKey} />
             <DialogHeader>
               <DialogTitle>Заявка отправлена</DialogTitle>
               <DialogDescription>
@@ -141,7 +155,7 @@ export function RegistrationDialog({
             <Button onClick={() => handleClose(false)} className="mt-2">
               Готово
             </Button>
-          </>
+          </div>
         ) : (
           <>
             <DialogHeader>
