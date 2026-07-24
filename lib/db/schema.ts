@@ -38,6 +38,7 @@ export const registrations = sqliteTable("registrations", {
   // Only meaningful for approved registrations.
   place: integer("place"),
   telegramChatId: text("telegram_chat_id"),
+  telegramUsername: text("telegram_username"),
   reminded72h: integer("reminded_72h", { mode: "boolean" }).notNull().default(false),
   reminded48h: integer("reminded_48h", { mode: "boolean" }).notNull().default(false),
   reminded24h: integer("reminded_24h", { mode: "boolean" }).notNull().default(false),

@@ -14,10 +14,45 @@ import {
   buildApplicationSummaryMessage,
   buildMyRegistrationsMessage,
   buildNextTournamentMessage,
+  buildParticipantsListMessage,
   buildRegisteredMessage,
+  ADMIN_MENU_KEYBOARD,
+  ADMIN_MENU_LABELS,
   MAIN_MENU_KEYBOARD,
   MENU_LABELS,
 } from "./messages";
+
+// Telegram caps message text at 4096 characters — a roster of ~60 players
+// each with a name/phone/handle can get close to that, so long messages
+// get split at line boundaries instead of failing outright.
+const TELEGRAM_MESSAGE_LIMIT = 3500;
+
+async function sendPossiblyLongMessage(
+  chatId: number,
+  text: string,
+  options?: { replyKeyboard?: string[][] },
+) {
+  if (text.length <= TELEGRAM_MESSAGE_LIMIT) {
+    await sendTelegramMessage(chatId, text, options);
+    return;
+  }
+  const lines = text.split("\n");
+  const chunks: string[] = [];
+  let chunk = "";
+  for (const line of lines) {
+    const next = chunk ? `${chunk}\n${line}` : line;
+    if (next.length > TELEGRAM_MESSAGE_LIMIT) {
+      if (chunk) chunks.push(chunk);
+      chunk = line;
+    } else {
+      chunk = next;
+    }
+  }
+  if (chunk) chunks.push(chunk);
+  for (let i = 0; i < chunks.length; i++) {
+    await sendTelegramMessage(chatId, chunks[i], i === chunks.length - 1 ? options : undefined);
+  }
+}
 
 // --- helpers -----------------------------------------------------------
 
@@ -165,7 +200,7 @@ async function continueApplication(chatId: number, text: string) {
   }
 }
 
-async function confirmApplication(chatId: number) {
+async function confirmApplication(chatId: number, telegramUsername?: string) {
   const state = pendingApplications.get(chatId);
   pendingApplications.delete(chatId);
   if (!state || !state.name || !state.phone) {
@@ -179,6 +214,7 @@ async function confirmApplication(chatId: number) {
     phone: state.phone,
     email: state.email,
     telegramChatId: String(chatId),
+    telegramUsername,
   });
 
   if (result.error) {
@@ -274,7 +310,7 @@ async function handleCancelCommand(chatId: number) {
 
 // --- /start --------------------------------------------------------------
 
-async function handleStart(chatId: number, token: string | undefined) {
+async function handleStart(chatId: number, token: string | undefined, telegramUsername?: string) {
   if (!token) {
     await sendTelegramMessage(
       chatId,
@@ -301,7 +337,7 @@ async function handleStart(chatId: number, token: string | undefined) {
 
   await db
     .update(registrations)
-    .set({ telegramChatId: String(chatId) })
+    .set({ telegramChatId: String(chatId), telegramUsername: telegramUsername ?? null })
     .where(eq(registrations.id, registration.id));
 
   const [tournament] = await db
@@ -317,6 +353,45 @@ async function handleStart(chatId: number, token: string | undefined) {
   }
 }
 
+// --- admin chat ------------------------------------------------------------
+
+async function handleParticipantsList(chatId: number) {
+  const tournament = await getNextTournament();
+  if (!tournament) {
+    await sendTelegramMessage(chatId, "Сейчас нет предстоящих турниров.", {
+      replyKeyboard: ADMIN_MENU_KEYBOARD,
+    });
+    return;
+  }
+
+  const rows = await db
+    .select()
+    .from(registrations)
+    .where(eq(registrations.tournamentId, tournament.id));
+  const approved = rows.filter((r) => r.status === "approved");
+  const pending = rows.filter((r) => r.status === "pending");
+
+  await sendPossiblyLongMessage(chatId, buildParticipantsListMessage(tournament, approved, pending), {
+    replyKeyboard: ADMIN_MENU_KEYBOARD,
+  });
+}
+
+// The admin (staff) chat gets its own commands, entirely separate from the
+// player-facing menu below — same bot, different job. Anything here that
+// isn't a recognized admin command is left unanswered, since this chat also
+// doubles as a normal group chat for organizers to talk to each other.
+async function handleAdminMessage(chatId: number, text: string) {
+  if (text === ADMIN_MENU_LABELS.participants || /^\/participants\b/.test(text)) {
+    await handleParticipantsList(chatId);
+    return;
+  }
+  if (/^\/start\b/.test(text)) {
+    await sendTelegramMessage(chatId, "Меню организатора Royal63.", {
+      replyKeyboard: ADMIN_MENU_KEYBOARD,
+    });
+  }
+}
+
 // --- routing ---------------------------------------------------------------
 
 function isMenuCommand(text: string) {
@@ -328,6 +403,12 @@ async function handleMessage(update: TelegramUpdate) {
   const chatId = update.message?.chat.id;
   if (!text || !chatId) return;
 
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (adminChatId && String(chatId) === String(adminChatId)) {
+    await handleAdminMessage(chatId, text);
+    return;
+  }
+
   if (pendingApplications.has(chatId) && !isMenuCommand(text)) {
     await continueApplication(chatId, text);
     return;
@@ -336,7 +417,7 @@ async function handleMessage(update: TelegramUpdate) {
 
   const startMatch = /^\/start(?:\s+(\S+))?/.exec(text);
   if (startMatch) {
-    await handleStart(chatId, startMatch[1]);
+    await handleStart(chatId, startMatch[1], update.message?.from?.username);
     return;
   }
   if (/^\/cancel\b/.test(text)) {
@@ -443,7 +524,7 @@ async function handleApplyCallback(
   await editMessageText(chatId, query.message.message_id, query.message.text ?? "", {
     removeButtons: true,
   });
-  await confirmApplication(chatId);
+  await confirmApplication(chatId, query.from.username);
 }
 
 async function handleCallbackQuery(update: TelegramUpdate) {

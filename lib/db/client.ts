@@ -113,6 +113,13 @@ if (!newsColumns.some((c) => c.name === "category")) {
   sqlite.exec("ALTER TABLE news ADD COLUMN category TEXT NOT NULL DEFAULT 'general';");
 }
 
+// registrations.telegram_username lets the admin chat's participant list
+// show a clickable @handle, not just phone/name — backfill for existing
+// databases.
+if (!registrationColumns.some((c) => c.name === "telegram_username")) {
+  sqlite.exec("ALTER TABLE registrations ADD COLUMN telegram_username TEXT;");
+}
+
 export const db = drizzle(
   async (sql, params, method) => {
     const stmt = sqlite.prepare(sql);

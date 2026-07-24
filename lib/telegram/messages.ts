@@ -108,6 +108,14 @@ export const MAIN_MENU_KEYBOARD = [
   [MENU_LABELS.myRegistrations],
 ];
 
+// The admin (staff) chat gets its own menu, entirely separate from the
+// player-facing one above — different chat, different job.
+export const ADMIN_MENU_LABELS = {
+  participants: "👥 Участники ближайшего турнира",
+} as const;
+
+export const ADMIN_MENU_KEYBOARD = [[ADMIN_MENU_LABELS.participants]];
+
 const STATUS_LABELS: Record<string, string> = {
   pending: "⏳ На рассмотрении",
   approved: "✅ Подтверждена",
@@ -157,6 +165,25 @@ export function buildNewTournamentAnnouncementMessage(
     `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}\n` +
     `💰 ${tournament.buyIn ? `${tournament.buyIn.toLocaleString("ru-RU")} ₽` : "Фриролл"} · ${escapeHtml(tournament.format)}\n\n` +
     `Хотите на этот турнир?`
+  );
+}
+
+export function buildParticipantsListMessage(
+  tournament: TournamentInfo,
+  approved: { name: string; phone: string; telegramUsername: string | null }[],
+  pending: { name: string; phone: string; telegramUsername: string | null }[],
+) {
+  function formatRow(r: { name: string; phone: string; telegramUsername: string | null }, i: number) {
+    const handle = r.telegramUsername ? ` — @${escapeHtml(r.telegramUsername)}` : "";
+    return `${i + 1}. ${escapeHtml(r.name)} — ${escapeHtml(r.phone)}${handle}`;
+  }
+  const approvedList = approved.length > 0 ? approved.map(formatRow).join("\n") : "—";
+  const pendingList = pending.length > 0 ? pending.map(formatRow).join("\n") : "—";
+  return (
+    `<b>Участники — ${escapeHtml(tournament.title)}</b>\n` +
+    `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}\n\n` +
+    `✅ Подтверждено (${approved.length}):\n${approvedList}\n\n` +
+    `🕓 На рассмотрении (${pending.length}):\n${pendingList}`
   );
 }
 

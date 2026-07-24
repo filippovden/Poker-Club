@@ -24,8 +24,11 @@ export async function createRegistration(params: {
   // Set when the bot itself collected the application — skips the usual
   // deep-link dance since we already know which chat to notify.
   telegramChatId?: string | null;
+  // Only ever known when the bot collected the application — shown in the
+  // admin chat's participant list so staff can find someone on Telegram.
+  telegramUsername?: string | null;
 }): Promise<CreateRegistrationResult> {
-  const { tournamentId, name, phone, email, telegramChatId } = params;
+  const { tournamentId, name, phone, email, telegramChatId, telegramUsername } = params;
 
   const [tournament] = await db
     .select()
@@ -73,6 +76,7 @@ export async function createRegistration(params: {
     cancelToken,
     status: "pending",
     telegramChatId: telegramChatId || null,
+    telegramUsername: telegramUsername || null,
   });
 
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
