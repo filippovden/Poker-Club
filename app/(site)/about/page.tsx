@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { Reveal, RevealGroup, RevealItem } from "@/components/reveal";
 import { Badge } from "@/components/ui/badge";
 import { SITE_CONTENT } from "@/lib/content";
@@ -55,14 +56,28 @@ export default function AboutPage() {
         <Badge variant="accent">Закрытый клуб</Badge>
       </Reveal>
 
-      <Reveal delay={0.05}>
-        <h1 className="font-display text-[clamp(2rem,6vw,3.5rem)] font-medium tracking-tight">
-          {SITE_CONTENT.clubName}
-        </h1>
-        <p className="mt-6 max-w-xl text-lg leading-relaxed text-[var(--muted-foreground)]">
-          {SITE_CONTENT.about.story}
-        </p>
-      </Reveal>
+      <div className="grid gap-10 sm:grid-cols-[1.1fr_0.9fr] sm:items-center">
+        <Reveal delay={0.05}>
+          <h1 className="font-display text-[clamp(2rem,6vw,3.5rem)] font-medium tracking-tight">
+            {SITE_CONTENT.clubName}
+          </h1>
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-[var(--muted-foreground)]">
+            {SITE_CONTENT.about.story}
+          </p>
+        </Reveal>
+        <Reveal delay={0.15} className="mx-auto w-full max-w-xs sm:max-w-none">
+          <div className="overflow-hidden rounded-2xl border border-[var(--border)] shadow-[0_30px_60px_-20px_rgba(0,0,0,0.7)]">
+            <Image
+              src="/brand/royal63-card-full.jpg"
+              alt={`${SITE_CONTENT.clubName} — туз пик`}
+              width={1248}
+              height={1248}
+              className="h-auto w-full"
+              priority
+            />
+          </div>
+        </Reveal>
+      </div>
 
       <section className="mt-20">
         <Reveal>
