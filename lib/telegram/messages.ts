@@ -112,9 +112,10 @@ export const MAIN_MENU_KEYBOARD = [
 // player-facing one above — different chat, different job.
 export const ADMIN_MENU_LABELS = {
   participants: "👥 Участники ближайшего турнира",
+  search: "🔍 Найти игрока",
 } as const;
 
-export const ADMIN_MENU_KEYBOARD = [[ADMIN_MENU_LABELS.participants]];
+export const ADMIN_MENU_KEYBOARD = [[ADMIN_MENU_LABELS.participants], [ADMIN_MENU_LABELS.search]];
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "⏳ На рассмотрении",
@@ -165,6 +166,32 @@ export function buildNewTournamentAnnouncementMessage(
     `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}\n` +
     `💰 ${tournament.buyIn ? `${tournament.buyIn.toLocaleString("ru-RU")} ₽` : "Фриролл"} · ${escapeHtml(tournament.format)}\n\n` +
     `Хотите на этот турнир?`
+  );
+}
+
+export function buildAdminSearchResultsMessage(
+  results: {
+    name: string;
+    phone: string;
+    telegramUsername: string | null;
+    status: string;
+    tournamentTitle: string;
+  }[],
+) {
+  const list = results
+    .map(
+      (r, i) =>
+        `${i + 1}. ${escapeHtml(r.name)} — ${escapeHtml(r.phone)}${r.telegramUsername ? ` — @${escapeHtml(r.telegramUsername)}` : ""}\n` +
+        `   🃏 ${escapeHtml(r.tournamentTitle)} · ${STATUS_LABELS[r.status] ?? r.status}`,
+    )
+    .join("\n\n");
+  return `<b>Найдено (${results.length}):</b>\n\n${list}`;
+}
+
+export function buildAdminCancelledMessage(tournament: TournamentInfo) {
+  return (
+    `❗ Ваша заявка на «${escapeHtml(tournament.title)}» отменена организаторами.\n` +
+    `Если это ошибка — напишите нам.`
   );
 }
 

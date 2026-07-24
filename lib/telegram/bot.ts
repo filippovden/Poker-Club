@@ -11,6 +11,8 @@ import {
   type TelegramUpdate,
 } from "./client";
 import {
+  buildAdminCancelledMessage,
+  buildAdminSearchResultsMessage,
   buildApplicationSummaryMessage,
   buildMyRegistrationsMessage,
   buildNextTournamentMessage,
@@ -79,6 +81,58 @@ async function buildCancelButtons(rows: { id: number; tournamentId: number }[]) 
       ];
     }),
   );
+}
+
+// Search results can span several different players in the same
+// tournament, so (unlike buildCancelButtons, used where every row already
+// belongs to a different tournament) each button needs the player's name
+// too, and cancellation is authorized by chat (admin chat only) rather
+// than by the registration's own telegramChatId.
+async function buildAdminCancelButtons(rows: { id: number; name: string; tournamentId: number }[]) {
+  return Promise.all(
+    rows.map(async (r) => {
+      const [tournament] = await db
+        .select()
+        .from(tournaments)
+        .where(eq(tournaments.id, r.tournamentId))
+        .limit(1);
+      return [
+        {
+          text: `❌ ${r.name} — ${tournament?.title ?? `#${r.tournamentId}`}`,
+          callback_data: `admin_cancel:${r.id}`,
+        },
+      ];
+    }),
+  );
+}
+
+// Russian numbers get written as +7960..., 8960..., or bare 960... — all
+// the same number — so phone comparison uses only the last 10 digits
+// rather than the raw digit string.
+function last10Digits(value: string) {
+  return value.replace(/\D/g, "").slice(-10);
+}
+
+// SQLite's LIKE only case-folds ASCII, so a plain SQL query would miss
+// "сурен" matching "Сурен" — filtering in JS with .toLowerCase() handles
+// Cyrillic correctly, and the registrations table is small enough that
+// pulling all active rows first is not a real cost.
+function matchesSearchQuery(
+  r: { name: string; phone: string; telegramUsername: string | null; telegramChatId: string | null },
+  rawQuery: string,
+) {
+  const q = rawQuery.trim().toLowerCase().replace(/^@/, "");
+  if (!q) return false;
+  if (r.name.toLowerCase().includes(q)) return true;
+  if (r.phone.toLowerCase().includes(q)) return true;
+  if (r.telegramUsername && r.telegramUsername.toLowerCase().includes(q)) return true;
+
+  const digitsQ = rawQuery.replace(/\D/g, "");
+  if (digitsQ.length >= 4) {
+    if (last10Digits(r.phone).includes(last10Digits(rawQuery))) return true;
+    if (r.telegramChatId && r.telegramChatId.includes(digitsQ)) return true;
+  }
+  return false;
 }
 
 async function getSpotsLeft(tournament: Tournament): Promise<number | null> {
@@ -355,6 +409,49 @@ async function handleStart(chatId: number, token: string | undefined, telegramUs
 
 // --- admin chat ------------------------------------------------------------
 
+// Tracks admin chats waiting on a search query after tapping "🔍 Найти
+// игрока" — same in-memory trade-off as pendingApplications above.
+const pendingAdminSearch = new Set<number>();
+
+function isAdminMenuCommand(text: string) {
+  return text.startsWith("/") || (Object.values(ADMIN_MENU_LABELS) as string[]).includes(text);
+}
+
+async function handleAdminSearch(chatId: number, rawQuery: string) {
+  const query = rawQuery.trim();
+  if (!query) {
+    await sendTelegramMessage(chatId, "Пустой запрос — попробуйте ещё раз.", {
+      replyKeyboard: ADMIN_MENU_KEYBOARD,
+    });
+    return;
+  }
+
+  const rows = await db
+    .select()
+    .from(registrations)
+    .where(inArray(registrations.status, ["pending", "approved"]));
+  const matches = rows.filter((r) => matchesSearchQuery(r, query));
+
+  if (matches.length === 0) {
+    await sendTelegramMessage(chatId, "Ничего не найдено.", { replyKeyboard: ADMIN_MENU_KEYBOARD });
+    return;
+  }
+
+  const withTournaments = await Promise.all(
+    matches.map(async (r) => {
+      const [t] = await db.select().from(tournaments).where(eq(tournaments.id, r.tournamentId)).limit(1);
+      return { ...r, tournamentTitle: t?.title ?? `#${r.tournamentId}` };
+    }),
+  );
+
+  await sendPossiblyLongMessage(chatId, buildAdminSearchResultsMessage(withTournaments), {
+    replyKeyboard: ADMIN_MENU_KEYBOARD,
+  });
+  await sendTelegramMessage(chatId, "Отменить одну из найденных заявок:", {
+    buttons: await buildAdminCancelButtons(matches),
+  });
+}
+
 async function handleParticipantsList(chatId: number) {
   const tournament = await getNextTournament();
   if (!tournament) {
@@ -381,8 +478,20 @@ async function handleParticipantsList(chatId: number) {
 // isn't a recognized admin command is left unanswered, since this chat also
 // doubles as a normal group chat for organizers to talk to each other.
 async function handleAdminMessage(chatId: number, text: string) {
+  if (pendingAdminSearch.has(chatId) && !isAdminMenuCommand(text)) {
+    pendingAdminSearch.delete(chatId);
+    await handleAdminSearch(chatId, text);
+    return;
+  }
+  pendingAdminSearch.delete(chatId);
+
   if (text === ADMIN_MENU_LABELS.participants || /^\/participants\b/.test(text)) {
     await handleParticipantsList(chatId);
+    return;
+  }
+  if (text === ADMIN_MENU_LABELS.search || /^\/find\b/.test(text)) {
+    pendingAdminSearch.add(chatId);
+    await sendTelegramMessage(chatId, "Введите имя, телефон, @username или Telegram ID игрока:");
     return;
   }
   if (/^\/start\b/.test(text)) {
@@ -506,6 +615,54 @@ async function handleCancelCallback(
   });
 }
 
+// Cancellation triggered by staff via the admin chat's "🔍 Найти игрока" —
+// authorized by the callback coming from the admin chat itself (like
+// approve/reject), not by matching the registration's own telegramChatId
+// the way the player's own cancel:<id> button is.
+async function handleAdminCancelCallback(
+  query: NonNullable<TelegramUpdate["callback_query"]>,
+  id: number,
+) {
+  if (!query.message) return;
+
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (!adminChatId || String(query.message.chat.id) !== String(adminChatId)) {
+    await answerCallbackQuery(query.id, "Недостаточно прав");
+    return;
+  }
+
+  const [registration] = await db.select().from(registrations).where(eq(registrations.id, id)).limit(1);
+  if (!registration) {
+    await answerCallbackQuery(query.id, "Заявка не найдена");
+    return;
+  }
+
+  await db.delete(registrations).where(eq(registrations.id, id));
+  await answerCallbackQuery(query.id, "Отменено");
+
+  const decidedBy = query.from.first_name ?? query.from.username ?? "";
+  const originalText = query.message.text ?? "";
+  await editMessageText(
+    query.message.chat.id,
+    query.message.message_id,
+    `${originalText}\n\n✅ Отменено${decidedBy ? ` — ${decidedBy}` : ""}`,
+    { removeButtons: true },
+  );
+
+  if (registration.telegramChatId) {
+    const [tournament] = await db
+      .select()
+      .from(tournaments)
+      .where(eq(tournaments.id, registration.tournamentId))
+      .limit(1);
+    if (tournament) {
+      sendTelegramMessage(registration.telegramChatId, buildAdminCancelledMessage(tournament)).catch((err) =>
+        console.error("[telegram] admin-cancel notify failed:", err),
+      );
+    }
+  }
+}
+
 async function handleApplyCallback(
   query: NonNullable<TelegramUpdate["callback_query"]>,
   action: "confirm" | "abort",
@@ -541,6 +698,12 @@ async function handleCallbackQuery(update: TelegramUpdate) {
   const cancelMatch = /^cancel:(\d+)$/.exec(query.data);
   if (cancelMatch) {
     await handleCancelCallback(query, Number(cancelMatch[1]));
+    return;
+  }
+
+  const adminCancelMatch = /^admin_cancel:(\d+)$/.exec(query.data);
+  if (adminCancelMatch) {
+    await handleAdminCancelCallback(query, Number(adminCancelMatch[1]));
     return;
   }
 
