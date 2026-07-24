@@ -3,10 +3,12 @@ import { Inter, Unbounded } from "next/font/google";
 import "./globals.css";
 import { ThemeScript } from "@/components/theme-script";
 import { Analytics } from "@/components/analytics";
+import { AmbientParticles } from "@/components/ambient-particles";
 import { CustomCursor } from "@/components/custom-cursor";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import { AgeGate } from "@/components/age-gate";
 import { ScrollToTop } from "@/components/scroll-to-top";
+import { StickyMobileCta } from "@/components/sticky-mobile-cta";
 import { SITE_CONTENT } from "@/lib/content";
 
 const inter = Inter({
@@ -105,11 +107,13 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
+        <AmbientParticles />
         <AgeGate />
         <CustomCursor />
         <ServiceWorkerRegister />
         {children}
         <ScrollToTop />
+        <StickyMobileCta />
       </body>
     </html>
   );

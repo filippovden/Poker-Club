@@ -85,7 +85,7 @@ html:not([data-age-gate="confirmed"]) body {
   background-size: 180px 180px;
 }
 
-@keyframes hero-float {
+@keyframes ambient-float {
   0% {
     transform: translateY(0);
     opacity: 0;
@@ -102,12 +102,12 @@ html:not([data-age-gate="confirmed"]) body {
   }
 }
 
-.hero-particle {
+.ambient-particle {
   position: absolute;
   border-radius: 9999px;
   background: var(--accent);
   filter: blur(1px);
-  animation-name: hero-float;
+  animation-name: ambient-float;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
 }

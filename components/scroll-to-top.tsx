@@ -23,7 +23,7 @@ export function ScrollToTop() {
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       aria-label="Наверх"
       title="Наверх"
-      className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)]/90 text-[var(--foreground)] shadow-lg backdrop-blur-md transition-all hover:border-[var(--accent)]/40 hover:-translate-y-0.5"
+      className="fixed bottom-24 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)]/90 text-[var(--foreground)] shadow-lg backdrop-blur-md transition-all hover:border-[var(--accent)]/40 hover:-translate-y-0.5 md:bottom-6"
     >
       <ArrowUp className="h-4 w-4" />
     </button>

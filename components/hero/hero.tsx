@@ -117,7 +117,7 @@ export function Hero() {
         {PARTICLES.map((p, i) => (
           <span
             key={i}
-            className="hero-particle"
+            className="ambient-particle"
             style={{
               left: p.left,
               bottom: "-10%",
