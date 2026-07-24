@@ -33,6 +33,7 @@ sqlite.exec(`
     excerpt TEXT,
     content TEXT NOT NULL,
     cover_image TEXT,
+    category TEXT NOT NULL DEFAULT 'general',
     published_at TEXT NOT NULL DEFAULT (current_timestamp)
   );
 
@@ -103,6 +104,13 @@ for (const col of ["reminded_72h", "reminded_48h", "reminded_24h", "reminded_2h"
 // tournament is marked completed — backfill for existing databases.
 if (!registrationColumns.some((c) => c.name === "place")) {
   sqlite.exec("ALTER TABLE registrations ADD COLUMN place INTEGER;");
+}
+
+// news.category (announcement/results/general) was added after initial
+// release — backfill for existing databases.
+const newsColumns = sqlite.prepare("PRAGMA table_info(news)").all() as { name: string }[];
+if (!newsColumns.some((c) => c.name === "category")) {
+  sqlite.exec("ALTER TABLE news ADD COLUMN category TEXT NOT NULL DEFAULT 'general';");
 }
 
 export const db = drizzle(

@@ -18,6 +18,7 @@ import {
 } from "@/lib/actions/tournaments";
 import { createNewsAction, updateNewsAction, deleteNewsAction } from "@/lib/actions/news";
 import { logoutAction } from "@/lib/actions/auth";
+import { NEWS_CATEGORY_LABELS } from "@/lib/news-categories";
 import type { Tournament, NewsArticle } from "@/lib/db/schema";
 
 type OptimisticAction<T> =
@@ -151,6 +152,7 @@ export function DashboardShell({
       excerpt: String(formData.get("excerpt") || "") || null,
       content: String(formData.get("content")),
       coverImage: editingNews?.coverImage ?? null,
+      category: (formData.get("category") as NewsArticle["category"]) || "general",
       publishedAt: editingNews?.publishedAt ?? new Date().toISOString(),
     };
 
@@ -363,6 +365,8 @@ export function DashboardShell({
                     <p className="truncate text-sm font-medium" title={item.title}>{item.title}</p>
                     <p className="truncate text-xs text-[var(--muted-foreground)]">
                       {new Date(item.publishedAt).toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" })}
+                      {" · "}
+                      {NEWS_CATEGORY_LABELS[item.category]}
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-1">

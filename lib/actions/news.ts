@@ -14,6 +14,7 @@ const newsSchema = z.object({
   excerpt: z.string().nullable(),
   content: z.string().min(1, "Текст обязателен"),
   coverImage: z.string().nullable(),
+  category: z.enum(["announcement", "results", "general"]),
 });
 
 async function requireAdmin() {
@@ -51,6 +52,7 @@ export async function createNewsAction(
     excerpt: formData.get("excerpt") || null,
     content: formData.get("content"),
     coverImage: formData.get("coverImage") || null,
+    category: formData.get("category") || "general",
   });
 
   if (!parsed.success) {
@@ -76,6 +78,7 @@ export async function updateNewsAction(
     excerpt: formData.get("excerpt") || null,
     content: formData.get("content"),
     coverImage: formData.get("coverImage") || null,
+    category: formData.get("category") || "general",
   });
 
   if (!parsed.success) {

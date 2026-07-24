@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +12,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import type { NewsArticle } from "@/lib/db/schema";
+import { NEWS_CATEGORY_LABELS } from "@/lib/news-categories";
 
 export function NewsFormDialog({
   open,
@@ -28,6 +37,10 @@ export function NewsFormDialog({
   error?: string;
   pending?: boolean;
 }) {
+  const [category, setCategory] = useState<NewsArticle["category"]>(
+    article?.category ?? "general",
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -38,10 +51,32 @@ export function NewsFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form action={onSubmit} className="flex flex-col gap-4">
+        <form
+          action={(formData) => {
+            formData.set("category", category);
+            onSubmit(formData);
+          }}
+          className="flex flex-col gap-4"
+        >
           <div className="flex flex-col gap-2">
             <Label htmlFor="news-title">Заголовок</Label>
             <Input id="news-title" name="title" defaultValue={article?.title} required />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>Категория</Label>
+            <Select value={category} onValueChange={(v) => setCategory(v as typeof category)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(NEWS_CATEGORY_LABELS) as NewsArticle["category"][]).map((key) => (
+                  <SelectItem key={key} value={key}>
+                    {NEWS_CATEGORY_LABELS[key]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex flex-col gap-2">

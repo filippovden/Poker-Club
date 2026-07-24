@@ -7,6 +7,8 @@ import { db } from "@/lib/db/client";
 import { news } from "@/lib/db/schema";
 import { Reveal } from "@/components/reveal";
 import { ShareButton } from "@/components/share-button";
+import { Badge } from "@/components/ui/badge";
+import { NEWS_CATEGORY_LABELS, NEWS_CATEGORY_BADGE_VARIANT } from "@/lib/news-categories";
 
 export const revalidate = 0;
 
@@ -71,9 +73,16 @@ export default async function NewsArticlePage({
         </Link>
 
         <div className="flex items-center justify-between">
-          <span className="text-xs text-[var(--muted-foreground)]">
-            {formatDate(article.publishedAt)}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-[var(--muted-foreground)]">
+              {formatDate(article.publishedAt)}
+            </span>
+            {NEWS_CATEGORY_BADGE_VARIANT[article.category] && (
+              <Badge variant={NEWS_CATEGORY_BADGE_VARIANT[article.category]}>
+                {NEWS_CATEGORY_LABELS[article.category]}
+              </Badge>
+            )}
+          </div>
           <ShareButton title={article.title} url={`/news/${slug}`} />
         </div>
         <h1 className="font-display mt-3 text-[clamp(1.75rem,4vw,3rem)] font-medium leading-tight tracking-tight">

@@ -57,6 +57,9 @@ export const news = sqliteTable("news", {
   excerpt: text("excerpt"),
   content: text("content").notNull(),
   coverImage: text("cover_image"),
+  category: text("category", { enum: ["announcement", "results", "general"] })
+    .notNull()
+    .default("general"),
   publishedAt: text("published_at")
     .notNull()
     .default(sql`(current_timestamp)`),

@@ -5,7 +5,9 @@ import { db } from "@/lib/db/client";
 import { news } from "@/lib/db/schema";
 import { Reveal, RevealGroup, RevealItem } from "@/components/reveal";
 import { DecorativeScene } from "@/components/decorative-scene";
+import { Badge } from "@/components/ui/badge";
 import { SITE_CONTENT } from "@/lib/content";
+import { NEWS_CATEGORY_LABELS, NEWS_CATEGORY_BADGE_VARIANT } from "@/lib/news-categories";
 
 const NEWS_DESCRIPTION = `Анонсы турниров, результаты и новости покерного клуба ${SITE_CONTENT.clubName} в Тольятти.`;
 
@@ -72,9 +74,16 @@ export default async function NewsPage() {
               )}
             </div>
             <div>
-              <span className="text-xs text-[var(--muted-foreground)]">
-                {formatDate(featured.publishedAt)}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  {formatDate(featured.publishedAt)}
+                </span>
+                {NEWS_CATEGORY_BADGE_VARIANT[featured.category] && (
+                  <Badge variant={NEWS_CATEGORY_BADGE_VARIANT[featured.category]}>
+                    {NEWS_CATEGORY_LABELS[featured.category]}
+                  </Badge>
+                )}
+              </div>
               <h2 className="font-display mt-3 text-2xl font-medium leading-tight tracking-tight transition-colors group-hover:text-[var(--accent)] sm:text-3xl">
                 {featured.title}
               </h2>
@@ -91,9 +100,16 @@ export default async function NewsPage() {
           {rest.map((item) => (
             <RevealItem key={item.id}>
               <Link href={`/news/${item.slug}`} className="group block">
-                <span className="text-xs text-[var(--muted-foreground)]">
-                  {formatDate(item.publishedAt)}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-[var(--muted-foreground)]">
+                    {formatDate(item.publishedAt)}
+                  </span>
+                  {NEWS_CATEGORY_BADGE_VARIANT[item.category] && (
+                    <Badge variant={NEWS_CATEGORY_BADGE_VARIANT[item.category]}>
+                      {NEWS_CATEGORY_LABELS[item.category]}
+                    </Badge>
+                  )}
+                </div>
                 <h3 className="font-display mt-2 text-xl font-medium leading-snug tracking-tight transition-colors group-hover:text-[var(--accent)]">
                   {item.title}
                 </h3>
