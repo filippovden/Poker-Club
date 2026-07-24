@@ -1,5 +1,5 @@
+import Image from "next/image";
 import { Reveal } from "@/components/reveal";
-import { DecorativeScene } from "@/components/decorative-scene";
 import { SITE_CONTENT } from "@/lib/content";
 
 export function AtmosphereSection() {
@@ -19,7 +19,15 @@ export function AtmosphereSection() {
         </Reveal>
 
         <Reveal delay={0.15}>
-          <DecorativeScene className="aspect-[4/3] rounded-2xl border border-[var(--border)]" />
+          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-[var(--border)] shadow-[0_30px_60px_-20px_rgba(0,0,0,0.7)]">
+            <Image
+              src="/brand/royal63-card-full.jpg"
+              alt={`${SITE_CONTENT.clubName} — туз пик`}
+              fill
+              className="object-cover"
+              sizes="(min-width: 768px) 50vw, 100vw"
+            />
+          </div>
         </Reveal>
       </div>
     </section>
