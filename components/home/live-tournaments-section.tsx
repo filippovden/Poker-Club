@@ -32,7 +32,7 @@ export async function LiveTournamentsSection() {
               Расписание
             </span>
             <h2 className="font-display mt-4 text-[clamp(1.75rem,4vw,3rem)] font-medium tracking-tight">
-              Живые турниры
+              Ближайшие турниры
             </h2>
           </div>
           <Button asChild variant="outline">
