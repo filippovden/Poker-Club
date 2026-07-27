@@ -112,19 +112,6 @@ html:not([data-age-gate="confirmed"]) body {
   animation-iteration-count: infinite;
 }
 
-html.has-custom-cursor {
-  cursor: none;
-}
-
-html.has-custom-cursor a,
-html.has-custom-cursor button {
-  cursor: none;
-}
-
-html.has-custom-cursor .custom-cursor {
-  display: flex;
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
