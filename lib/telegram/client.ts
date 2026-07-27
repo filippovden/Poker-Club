@@ -29,7 +29,16 @@ export interface TelegramUpdate {
   };
 }
 
-async function callApi(method: string, body: Record<string, unknown>) {
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Transient network blips between the server and Telegram's API (seen in
+// practice on Russian hosting — connect timeouts that clear up on their
+// own within seconds) used to silently drop notifications, since callers
+// only log-and-swallow errors. Retry a couple of times with backoff before
+// giving up, so a momentary blip doesn't cost a player their confirmation.
+async function callApi(method: string, body: Record<string, unknown>, attempt = 1): Promise<unknown> {
   if (!process.env.TELEGRAM_BOT_TOKEN) return null;
   try {
     const res = await fetch(apiUrl(method), {
@@ -38,11 +47,19 @@ async function callApi(method: string, body: Record<string, unknown>) {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
+      if ((res.status >= 500 || res.status === 429) && attempt < 3) {
+        await sleep(attempt * 1000);
+        return callApi(method, body, attempt + 1);
+      }
       console.error(`[telegram] ${method} failed:`, res.status, await res.text());
       return null;
     }
     return await res.json();
   } catch (err) {
+    if (attempt < 3) {
+      await sleep(attempt * 1000);
+      return callApi(method, body, attempt + 1);
+    }
     console.error(`[telegram] ${method} error:`, err);
     return null;
   }
@@ -59,13 +76,13 @@ export async function sendTelegramMessage(
   } else if (options?.replyKeyboard) {
     replyMarkup = { keyboard: options.replyKeyboard, resize_keyboard: true };
   }
-  const result = await callApi("sendMessage", {
+  const result = (await callApi("sendMessage", {
     chat_id: chatId,
     text,
     parse_mode: "HTML",
     reply_markup: replyMarkup,
-  });
-  return result?.result as { message_id: number } | undefined;
+  })) as { result?: { message_id: number } } | null;
+  return result?.result;
 }
 
 export async function answerCallbackQuery(callbackQueryId: string, text?: string) {
