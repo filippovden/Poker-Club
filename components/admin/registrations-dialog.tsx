@@ -147,6 +147,11 @@ function RegistrationsList({
                     {r.phone}
                     {r.email ? ` · ${r.email}` : ""} · {formatDate(r.createdAt)}
                   </p>
+                  {r.comment && (
+                    <p className="truncate text-xs italic text-[var(--muted-foreground)]">
+                      💬 {r.comment}
+                    </p>
+                  )}
                   <div className="flex items-center gap-2">
                     <p className={`text-xs font-medium ${badge.className}`}>{badge.label}</p>
                     {r.status === "approved" && r.tableNumber != null && (

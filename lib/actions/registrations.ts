@@ -25,6 +25,7 @@ const registerSchema = z.object({
     .email("Похоже на некорректный email")
     .optional()
     .or(z.literal("")),
+  comment: z.string().trim().max(500, "Слишком длинный комментарий").optional().or(z.literal("")),
   consent: z.literal("on", "Нужно согласие на обработку персональных данных"),
   age: z.literal("on", "Нужно подтверждение возраста 18+"),
   // honeypot: real users never fill this hidden field
@@ -47,6 +48,7 @@ export async function registerForTournamentAction(
     name: formData.get("name"),
     phone: formData.get("phone"),
     email: formData.get("email") || "",
+    comment: formData.get("comment") || "",
     consent: formData.get("consent"),
     age: formData.get("age"),
     website: formData.get("website") || "",
@@ -65,6 +67,7 @@ export async function registerForTournamentAction(
     name: parsed.data.name,
     phone: parsed.data.phone,
     email: parsed.data.email || null,
+    comment: parsed.data.comment || null,
   });
   if (result.error) return { error: result.error };
 

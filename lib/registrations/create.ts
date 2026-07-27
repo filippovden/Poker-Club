@@ -21,6 +21,9 @@ export async function createRegistration(params: {
   name: string;
   phone: string;
   email?: string | null;
+  // Free-text note from the applicant (e.g. "первый раз, подскажите как
+  // проходит турнир") — shown to organizers alongside the application.
+  comment?: string | null;
   // Set when the bot itself collected the application — skips the usual
   // deep-link dance since we already know which chat to notify.
   telegramChatId?: string | null;
@@ -28,7 +31,7 @@ export async function createRegistration(params: {
   // admin chat's participant list so staff can find someone on Telegram.
   telegramUsername?: string | null;
 }): Promise<CreateRegistrationResult> {
-  const { tournamentId, name, phone, email, telegramChatId, telegramUsername } = params;
+  const { tournamentId, name, phone, email, comment, telegramChatId, telegramUsername } = params;
 
   const [tournament] = await db
     .select()
@@ -73,6 +76,7 @@ export async function createRegistration(params: {
     name,
     phone,
     email: email || null,
+    comment: comment || null,
     cancelToken,
     status: "pending",
     telegramChatId: telegramChatId || null,
@@ -88,7 +92,7 @@ export async function createRegistration(params: {
       .limit(1);
     sendTelegramMessage(
       adminChatId,
-      buildAdminNewRegistrationMessage({ name, phone, email, tournament }),
+      buildAdminNewRegistrationMessage({ name, phone, email, comment, tournament }),
       inserted
         ? {
             buttons: [

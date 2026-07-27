@@ -170,6 +170,13 @@ export default function AboutPage() {
           </p>
           <div className="mt-6 flex flex-col divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">
             <a
+              href={`tel:${SITE_CONTENT.contacts.phone.replace(/[^\d+]/g, "")}`}
+              className="flex items-center justify-between px-5 py-4 hover:bg-[var(--surface-2)]"
+            >
+              <span className="text-xs text-[var(--muted-foreground)]">Телефон</span>
+              <span>{SITE_CONTENT.contacts.phone}</span>
+            </a>
+            <a
               href={`mailto:${SITE_CONTENT.contacts.email}`}
               className="flex items-center justify-between px-5 py-4 hover:bg-[var(--surface-2)]"
             >
@@ -187,9 +194,7 @@ export default function AboutPage() {
             </a>
             <div className="flex items-center justify-between px-5 py-4">
               <span className="text-xs text-[var(--muted-foreground)]">Адрес зала</span>
-              <span className="text-right text-[var(--muted-foreground)]">
-                Сообщим при подтверждении заявки
-              </span>
+              <span className="text-right text-[var(--muted-foreground)]">{SITE_CONTENT.venue}</span>
             </div>
           </div>
         </Reveal>

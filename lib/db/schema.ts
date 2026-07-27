@@ -30,6 +30,7 @@ export const registrations = sqliteTable("registrations", {
   name: text("name").notNull(),
   phone: text("phone").notNull(),
   email: text("email"),
+  comment: text("comment"),
   cancelToken: text("cancel_token").notNull().unique(),
   status: text("status").notNull().default("pending"),
   tableNumber: integer("table_number"),

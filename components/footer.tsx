@@ -5,20 +5,27 @@ import { SITE_CONTENT } from "@/lib/content";
 export function Footer() {
   const year = new Date().getFullYear();
   const telegramHandle = SITE_CONTENT.contacts.telegram.replace(/^@/, "");
+  const phoneHref = SITE_CONTENT.contacts.phone.replace(/[^\d+]/g, "");
 
   return (
     <footer className="border-t border-[var(--border)] bg-[var(--background)]">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-12">
         <div className="flex flex-wrap items-start justify-between gap-8">
-          <div className="flex items-center gap-2.5">
-            <LogoMark className="h-6 w-6 text-[var(--foreground)]" />
-            <span className="font-display text-sm font-medium">{SITE_CONTENT.clubName}</span>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2.5">
+              <LogoMark className="h-6 w-6 text-[var(--foreground)]" />
+              <span className="font-display text-sm font-medium">{SITE_CONTENT.clubName}</span>
+            </div>
+            <p className="max-w-xs text-sm text-[var(--muted-foreground)]">{SITE_CONTENT.venue}</p>
           </div>
 
           <div className="flex flex-col gap-2">
             <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--muted-foreground)]">
-              Анонсы турниров
+              Контакты
             </span>
+            <a href={`tel:${phoneHref}`} className="text-sm text-[var(--foreground)] hover:text-[var(--accent)]">
+              {SITE_CONTENT.contacts.phone}
+            </a>
             <a
               href={`https://t.me/${telegramHandle}`}
               target="_blank"

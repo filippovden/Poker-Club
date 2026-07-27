@@ -84,14 +84,16 @@ export function buildAdminNewRegistrationMessage(params: {
   name: string;
   phone: string;
   email?: string | null;
+  comment?: string | null;
   tournament: TournamentInfo;
 }) {
-  const { name, phone, email, tournament } = params;
+  const { name, phone, email, comment, tournament } = params;
   return (
     `🆕 <b>Новая заявка</b>\n\n` +
     `👤 ${escapeHtml(name)}\n` +
     `📞 ${escapeHtml(phone)}\n` +
     (email ? `✉️ ${escapeHtml(email)}\n` : "") +
+    (comment ? `💬 ${escapeHtml(comment)}\n` : "") +
     `🃏 ${escapeHtml(tournament.title)}\n` +
     `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}`
   );

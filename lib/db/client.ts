@@ -120,6 +120,12 @@ if (!registrationColumns.some((c) => c.name === "telegram_username")) {
   sqlite.exec("ALTER TABLE registrations ADD COLUMN telegram_username TEXT;");
 }
 
+// registrations.comment holds the applicant's optional free-text note —
+// backfill for existing databases.
+if (!registrationColumns.some((c) => c.name === "comment")) {
+  sqlite.exec("ALTER TABLE registrations ADD COLUMN comment TEXT;");
+}
+
 export const db = drizzle(
   async (sql, params, method) => {
     const stmt = sqlite.prepare(sql);

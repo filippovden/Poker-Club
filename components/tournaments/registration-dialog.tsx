@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { CardBurst } from "@/components/tournaments/card-burst";
 import {
   registerForTournamentAction,
@@ -45,6 +46,7 @@ export function RegistrationDialog({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [comment, setComment] = useState("");
   const [consent, setConsent] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [burstKey, setBurstKey] = useState(0);
@@ -117,8 +119,9 @@ export function RegistrationDialog({
             <DialogHeader>
               <DialogTitle>Заявка отправлена</DialogTitle>
               <DialogDescription>
-                Организаторы рассмотрят заявку и свяжутся с вами, чтобы подтвердить
-                участие в «{tournamentTitle}».
+                Заявка на «{tournamentTitle}» у организаторов. Место закрепляется
+                только после подтверждения — его пришлём в Telegram, до этого
+                место не гарантировано.
               </DialogDescription>
             </DialogHeader>
             {state.telegramLink && (
@@ -204,6 +207,17 @@ export function RegistrationDialog({
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="reg-comment">Комментарий (необязательно)</Label>
+                <Textarea
+                  id="reg-comment"
+                  name="comment"
+                  placeholder="Например: первый раз в клубе, есть вопрос по формату"
+                  rows={3}
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
                 />
               </div>
 
