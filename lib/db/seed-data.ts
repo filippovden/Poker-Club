@@ -27,13 +27,23 @@ export async function seedAdmin() {
   }
 }
 
+// Pins the seed tournaments' clock time to a normal club evening (19:00
+// Moscow, fixed UTC+3 — Russia has had no DST since 2014) instead of
+// whatever second the server happened to first boot at, which otherwise
+// produced a nonsensical displayed time like "10:57".
+function moscowEvening(daysFromNow: number) {
+  const d = new Date(Date.now() + daysFromNow * 24 * 3600 * 1000);
+  d.setUTCHours(16, 0, 0, 0);
+  return d.toISOString();
+}
+
 export async function seedSampleData() {
   const existingTournaments = await db.select().from(tournaments).limit(1);
 
   if (existingTournaments.length === 0) {
-    const inOneWeek = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
-    const inTwoWeeks = new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString();
-    const lastWeek = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    const inOneWeek = moscowEvening(7);
+    const inTwoWeeks = moscowEvening(14);
+    const lastWeek = moscowEvening(-7);
 
     await db.insert(tournaments).values([
       {
