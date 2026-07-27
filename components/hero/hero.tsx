@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { MagneticWrapper } from "@/components/magnetic";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
-const VIDEO_URL = "/brand/hero-chips-loop.mp4";
+const VIDEO_URL = "/brand/hero-royal63-table.mp4";
 
 const HEADLINE_LINE_1 = ["Честная", "игра."];
 const HEADLINE_LINE_2 = ["Только", "для", "своих."];
