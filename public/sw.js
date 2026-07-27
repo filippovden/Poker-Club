@@ -37,9 +37,16 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     (async () => {
+      // A network blip during a fetch inside a Service Worker doesn't
+      // always reject — a silently dropped/filtered connection can leave
+      // this pending forever, and a pending promise never reaches the
+      // catch block below, so the page just hangs with no fallback ever
+      // kicking in. Abort and fall back to cache if it takes too long.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       try {
-        const response = await fetch(request);
-        if (response.ok && request.method === "GET") {
+        const response = await fetch(request, { signal: controller.signal });
+        if (response.ok) {
           const cache = await caches.open(CACHE_NAME);
           cache.put(request, response.clone());
         }
@@ -47,6 +54,8 @@ self.addEventListener("fetch", (event) => {
       } catch {
         const cached = await caches.match(request);
         return cached || caches.match("/");
+      } finally {
+        clearTimeout(timeoutId);
       }
     })(),
   );
