@@ -167,7 +167,7 @@ cp deploy/nginx.conf.example /etc/nginx/sites-available/royal63
 nano /etc/nginx/sites-available/royal63
 ```
 
-Замените `royal63.club` на ваш реальный домен (если отличается), сохраните.
+Замените `royal-63.ru` на ваш реальный домен (если отличается), сохраните.
 
 ```bash
 ln -s /etc/nginx/sites-available/royal63 /etc/nginx/sites-enabled/
@@ -182,7 +182,7 @@ systemctl reload nginx
 
 ```bash
 apt install -y certbot python3-certbot-nginx
-certbot --nginx -d royal63.club -d www.royal63.club
+certbot --nginx -d royal-63.ru -d www.royal-63.ru
 ```
 
 Certbot сам допишет конфиг Nginx и настроит редирект на HTTPS. Отвечайте

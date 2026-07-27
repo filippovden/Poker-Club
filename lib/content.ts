@@ -8,9 +8,9 @@
 
 export const SITE_CONTENT = {
   clubName: "Royal63",
-  // ЗАМЕНИТЕ на реальный домен, когда он появится — используется в
-  // метаданных, sitemap.xml и robots.txt.
-  domain: "royal63.club",
+  // Реальный зарегистрированный домен клуба — используется в метаданных,
+  // sitemap.xml и robots.txt.
+  domain: "royal-63.ru",
   facts: [
     { value: "NLH · PLO", label: "форматы игры" },
     { value: "Еженедельно", label: "турниры по расписанию" },
@@ -26,7 +26,7 @@ export const SITE_CONTENT = {
   },
   contacts: {
     // ЗАМЕНИТЕ на реальный email клуба.
-    email: "info@royal63.club",
+    email: "info@royal-63.ru",
     // Публичный телефон намеренно не показываем на сайте — сначала заявка,
     // контакт для связи сообщаем после подтверждения (см. About).
     // ЗАМЕНИТЕ на реальный номер клуба и раскомментируйте в about/page.tsx,
