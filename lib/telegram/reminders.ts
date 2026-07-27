@@ -2,14 +2,12 @@ import { and, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { registrations, tournaments } from "@/lib/db/schema";
 import { sendTelegramMessage } from "./client";
-import { buildReminderMessage } from "./messages";
+import { buildReminderMessage, buildReminderButtons } from "./messages";
 
 // Ordered largest-first so a registration that's gone quiet for a while
 // (e.g. the bot was down) catches up through each unsent reminder in one
 // pass rather than skipping straight to the most urgent one.
 const REMINDER_THRESHOLDS = [
-  { hours: 72, field: "reminded72h", phrase: "через 3 дня" },
-  { hours: 48, field: "reminded48h", phrase: "через 2 дня" },
   { hours: 24, field: "reminded24h", phrase: "завтра" },
   { hours: 2, field: "reminded2h", phrase: "совсем скоро" },
 ] as const;
@@ -42,6 +40,7 @@ export async function checkReminders() {
       await sendTelegramMessage(
         registration.telegramChatId!,
         buildReminderMessage(tournament, threshold.phrase),
+        { buttons: buildReminderButtons(registration.id) },
       );
       await db
         .update(registrations)

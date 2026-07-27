@@ -615,6 +615,36 @@ async function handleCancelCallback(
   });
 }
 
+// Reminders re-ask "you're still coming?" rather than just informing — this
+// just acknowledges, same authorization boundary as handleCancelCallback
+// (the callback must come from the chat the registration is linked to).
+async function handleConfirmAttendCallback(
+  query: NonNullable<TelegramUpdate["callback_query"]>,
+  id: number,
+) {
+  if (!query.message) return;
+  const chatId = query.message.chat.id;
+
+  const [registration] = await db
+    .select()
+    .from(registrations)
+    .where(eq(registrations.id, id))
+    .limit(1);
+
+  if (!registration || String(registration.telegramChatId) !== String(chatId)) {
+    await answerCallbackQuery(query.id, "Заявка не найдена");
+    return;
+  }
+
+  await answerCallbackQuery(query.id, "Отлично, ждём вас!");
+  await editMessageText(
+    chatId,
+    query.message.message_id,
+    `${query.message.text ?? ""}\n\n✅ Участие подтверждено`,
+    { removeButtons: true },
+  );
+}
+
 // Cancellation triggered by staff via the admin chat's "🔍 Найти игрока" —
 // authorized by the callback coming from the admin chat itself (like
 // approve/reject), not by matching the registration's own telegramChatId
@@ -698,6 +728,12 @@ async function handleCallbackQuery(update: TelegramUpdate) {
   const cancelMatch = /^cancel:(\d+)$/.exec(query.data);
   if (cancelMatch) {
     await handleCancelCallback(query, Number(cancelMatch[1]));
+    return;
+  }
+
+  const confirmAttendMatch = /^confirm_attend:(\d+)$/.exec(query.data);
+  if (confirmAttendMatch) {
+    await handleConfirmAttendCallback(query, Number(confirmAttendMatch[1]));
     return;
   }
 

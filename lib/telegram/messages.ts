@@ -76,8 +76,22 @@ export function buildReminderMessage(tournament: TournamentInfo, phrase: string)
   return (
     `⏰ Напоминаем: <b>${escapeHtml(tournament.title)}</b> начнётся ${phrase} ` +
     `(${formatDateOnly(tournament.startsAt)} в ${formatTimeOnly(tournament.startsAt)}).\n` +
-    `${venueLine()}`
+    `${venueLine()}\n\n` +
+    `Вы всё ещё придёте?`
   );
+}
+
+// Every reminder asks the player to re-confirm rather than just informing —
+// "Отменить" reuses the exact same cancel:<id> callback as the player's own
+// /cancel flow (bot.ts's handleCancelCallback), so there's one cancellation
+// code path regardless of where the button was clicked from.
+export function buildReminderButtons(registrationId: number) {
+  return [
+    [
+      { text: "✅ Подтвердить", callback_data: `confirm_attend:${registrationId}` },
+      { text: "❌ Отменить", callback_data: `cancel:${registrationId}` },
+    ],
+  ];
 }
 
 export function buildAdminNewRegistrationMessage(params: {
