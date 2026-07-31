@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, or } from "drizzle-orm";
+import { and, count, eq, or } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { registrations, tournaments, type Tournament } from "@/lib/db/schema";
 import { sendTelegramMessage } from "@/lib/telegram/client";
@@ -44,11 +44,19 @@ export async function createRegistration(params: {
     return { error: "Регистрация на этот турнир уже закрыта" };
   }
 
-  // No hard cap on applications — once approved seats run out, new
-  // applications still queue up as a waitlist (first pending in line),
-  // so organizers can backfill the moment someone cancels or no-shows
-  // instead of turning people away outright. The real cap is enforced
-  // when a registration is approved (see lib/registrations/set-status.ts).
+  // Once approved seats reach the cap, registration closes outright rather
+  // than queuing new applications as a waitlist — organizers asked for new
+  // signups to stop appearing once a tournament is full, not just capped
+  // at approval time.
+  if (tournament.maxPlayers) {
+    const [{ value: approvedCount }] = await db
+      .select({ value: count() })
+      .from(registrations)
+      .where(and(eq(registrations.tournamentId, tournamentId), eq(registrations.status, "approved")));
+    if (approvedCount >= tournament.maxPlayers) {
+      return { error: "Все места заняты — регистрация на этот турнир закрыта." };
+    }
+  }
 
   const duplicateConditions = [eq(registrations.phone, phone)];
   if (email) duplicateConditions.push(eq(registrations.email, email));
