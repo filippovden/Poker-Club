@@ -41,7 +41,7 @@ function formatDate(iso: string) {
   // producing a hydration mismatch and, worse, showing out-of-town visitors
   // their own local time instead of the actual time in Тольятти.
   return date.toLocaleString("ru-RU", {
-    timeZone: "Europe/Moscow",
+    timeZone: "Europe/Samara",
     day: "numeric",
     month: "long",
     hour: "2-digit",

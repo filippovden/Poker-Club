@@ -16,14 +16,14 @@ export function formatDateOnly(iso: string) {
   // Fixed to the venue's timezone so the bot always shows the actual local
   // time in Тольятти, regardless of which timezone the server happens to
   // run in once deployed.
-  return date.toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow", day: "numeric", month: "long" });
+  return date.toLocaleDateString("ru-RU", { timeZone: "Europe/Samara", day: "numeric", month: "long" });
 }
 
 export function formatTimeOnly(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleTimeString("ru-RU", {
-    timeZone: "Europe/Moscow",
+    timeZone: "Europe/Samara",
     hour: "2-digit",
     minute: "2-digit",
   });

@@ -27,13 +27,14 @@ export async function seedAdmin() {
   }
 }
 
-// Pins the seed tournaments' clock time to a normal club evening (19:00
-// Moscow, fixed UTC+3 — Russia has had no DST since 2014) instead of
-// whatever second the server happened to first boot at, which otherwise
-// produced a nonsensical displayed time like "10:57".
-function moscowEvening(daysFromNow: number) {
+// Pins the seed tournaments' clock time to a normal club evening (19:00 in
+// Тольятти — Europe/Samara, fixed UTC+4, not Moscow's UTC+3 — Russia has
+// had no DST since 2014) instead of whatever second the server happened to
+// first boot at, which otherwise produced a nonsensical displayed time
+// like "10:57".
+function samaraEvening(daysFromNow: number) {
   const d = new Date(Date.now() + daysFromNow * 24 * 3600 * 1000);
-  d.setUTCHours(16, 0, 0, 0);
+  d.setUTCHours(15, 0, 0, 0);
   return d.toISOString();
 }
 
@@ -41,9 +42,9 @@ export async function seedSampleData() {
   const existingTournaments = await db.select().from(tournaments).limit(1);
 
   if (existingTournaments.length === 0) {
-    const inOneWeek = moscowEvening(7);
-    const inTwoWeeks = moscowEvening(14);
-    const lastWeek = moscowEvening(-7);
+    const inOneWeek = samaraEvening(7);
+    const inTwoWeeks = samaraEvening(14);
+    const lastWeek = samaraEvening(-7);
 
     await db.insert(tournaments).values([
       {

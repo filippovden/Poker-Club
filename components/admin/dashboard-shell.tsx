@@ -287,7 +287,7 @@ export function DashboardShell({
                       <p className="truncate text-sm font-medium" title={t.title}>{t.title}</p>
                       <p className="truncate text-xs text-[var(--muted-foreground)]">
                         {t.format} ·{" "}
-                        {new Date(t.startsAt).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })}
+                        {new Date(t.startsAt).toLocaleString("ru-RU", { timeZone: "Europe/Samara" })}
                         {statusCounts[t.id] && (
                           <>
                             {" · "}
@@ -364,7 +364,7 @@ export function DashboardShell({
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium" title={item.title}>{item.title}</p>
                     <p className="truncate text-xs text-[var(--muted-foreground)]">
-                      {new Date(item.publishedAt).toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" })}
+                      {new Date(item.publishedAt).toLocaleDateString("ru-RU", { timeZone: "Europe/Samara" })}
                       {" · "}
                       {NEWS_CATEGORY_LABELS[item.category]}
                     </p>

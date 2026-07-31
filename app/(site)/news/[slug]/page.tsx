@@ -45,7 +45,7 @@ function formatDate(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
   return date.toLocaleDateString("ru-RU", {
-    timeZone: "Europe/Moscow",
+    timeZone: "Europe/Samara",
     day: "numeric",
     month: "long",
     year: "numeric",
