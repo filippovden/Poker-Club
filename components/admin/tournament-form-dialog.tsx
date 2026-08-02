@@ -21,6 +21,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import type { Tournament } from "@/lib/db/schema";
+import { utcIsoToSamaraWallClock } from "@/lib/timezone";
 
 export interface TournamentFormValues {
   title: string;
@@ -29,14 +30,6 @@ export interface TournamentFormValues {
   buyIn: string;
   description: string;
   status: "upcoming" | "live" | "completed";
-}
-
-function toDatetimeLocal(iso?: string) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function TournamentFormFields({
@@ -112,7 +105,7 @@ function TournamentFormFields({
             id="startsAt"
             name="startsAt"
             type="datetime-local"
-            defaultValue={toDatetimeLocal(source?.startsAt)}
+            defaultValue={utcIsoToSamaraWallClock(source?.startsAt)}
             required
           />
         </div>

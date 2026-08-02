@@ -41,11 +41,10 @@ export function RegistrationDialog({
 
   // Controlled fields — React's form-action API resets uncontrolled inputs
   // after every submission (success or error), which was wiping the name/
-  // email/checkboxes the moment the server returned a validation error
-  // (e.g. "already applied"), forcing people to retype everything.
+  // checkboxes the moment the server returned a validation error (e.g.
+  // "already applied"), forcing people to retype everything.
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
   const [comment, setComment] = useState("");
   const [consent, setConsent] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
@@ -196,17 +195,6 @@ export function RegistrationDialog({
                   placeholder="+7 900 000-00-00"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="reg-email">Email (необязательно)</Label>
-                <Input
-                  id="reg-email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div className="flex flex-col gap-2">

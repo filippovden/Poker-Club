@@ -7,6 +7,7 @@ import { db } from "@/lib/db/client";
 import { registrations, tournaments } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
 import { announceNewTournament } from "@/lib/telegram/broadcast";
+import { samaraWallClockToUtcIso } from "@/lib/timezone";
 
 const tournamentSchema = z
   .object({
@@ -98,7 +99,7 @@ export async function createTournamentAction(
 
   const [created] = await db
     .insert(tournaments)
-    .values(withComputedCapacity(parsed.data))
+    .values(withComputedCapacity({ ...parsed.data, startsAt: samaraWallClockToUtcIso(parsed.data.startsAt) }))
     .returning();
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
@@ -137,7 +138,7 @@ export async function updateTournamentAction(
 
   await db
     .update(tournaments)
-    .set(withComputedCapacity(parsed.data))
+    .set(withComputedCapacity({ ...parsed.data, startsAt: samaraWallClockToUtcIso(parsed.data.startsAt) }))
     .where(eq(tournaments.id, id));
   await clearOutOfRangeSeats(id, parsed.data.tableCount, parsed.data.seatsPerTable);
   revalidatePath("/tournaments");
