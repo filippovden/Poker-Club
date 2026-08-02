@@ -13,6 +13,11 @@ const sqlite = globalThis.__lpSqlite ?? new DatabaseSync(DB_PATH);
 if (process.env.NODE_ENV !== "production") globalThis.__lpSqlite = sqlite;
 
 sqlite.exec("PRAGMA foreign_keys = ON;");
+// Next's build collects page data across several worker processes, each
+// opening its own handle to the same file — without a busy timeout, one
+// worker's schema-migration write makes every other worker's fail outright
+// with SQLITE_ERROR instead of just waiting its turn.
+sqlite.exec("PRAGMA busy_timeout = 5000;");
 
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS tournaments (
@@ -125,6 +130,74 @@ if (!registrationColumns.some((c) => c.name === "telegram_username")) {
 if (!registrationColumns.some((c) => c.name === "comment")) {
   sqlite.exec("ALTER TABLE registrations ADD COLUMN comment TEXT;");
 }
+
+// tournaments.starting_stack/rebuy_chips/addon_chips power the live
+// rebuy/addon tracking — backfill for existing databases.
+for (const col of ["starting_stack", "rebuy_chips", "addon_chips"]) {
+  if (!tournamentColumns.some((c) => c.name === col)) {
+    sqlite.exec(`ALTER TABLE tournaments ADD COLUMN ${col} INTEGER;`);
+  }
+}
+
+// registrations.player_id/current_stack/rebuy_count/addon_count/
+// total_spent/eliminated_at power live tournament play (stacks, rebuys,
+// addons, elimination order) and the cross-tournament rating system —
+// backfill for existing databases.
+if (!registrationColumns.some((c) => c.name === "player_id")) {
+  sqlite.exec("ALTER TABLE registrations ADD COLUMN player_id INTEGER REFERENCES players(id);");
+}
+if (!registrationColumns.some((c) => c.name === "current_stack")) {
+  sqlite.exec("ALTER TABLE registrations ADD COLUMN current_stack INTEGER;");
+}
+if (!registrationColumns.some((c) => c.name === "rebuy_count")) {
+  sqlite.exec("ALTER TABLE registrations ADD COLUMN rebuy_count INTEGER NOT NULL DEFAULT 0;");
+}
+if (!registrationColumns.some((c) => c.name === "addon_count")) {
+  sqlite.exec("ALTER TABLE registrations ADD COLUMN addon_count INTEGER NOT NULL DEFAULT 0;");
+}
+if (!registrationColumns.some((c) => c.name === "total_spent")) {
+  sqlite.exec("ALTER TABLE registrations ADD COLUMN total_spent INTEGER NOT NULL DEFAULT 0;");
+}
+if (!registrationColumns.some((c) => c.name === "eliminated_at")) {
+  sqlite.exec("ALTER TABLE registrations ADD COLUMN eliminated_at TEXT;");
+}
+
+// players/rating_history/tournament_actions are new tables added for the
+// cross-tournament rating system and the full stack-action audit log.
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS players (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    phone TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    telegram_chat_id TEXT,
+    rating REAL NOT NULL DEFAULT 1000,
+    tournaments_played INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (current_timestamp),
+    updated_at TEXT NOT NULL DEFAULT (current_timestamp)
+  );
+
+  CREATE TABLE IF NOT EXISTS rating_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+    old_rating REAL NOT NULL,
+    new_rating REAL NOT NULL,
+    place INTEGER NOT NULL,
+    points_earned REAL NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (current_timestamp)
+  );
+
+  CREATE TABLE IF NOT EXISTS tournament_actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+    registration_id INTEGER NOT NULL REFERENCES registrations(id) ON DELETE CASCADE,
+    admin_username TEXT,
+    type TEXT NOT NULL,
+    chips INTEGER,
+    money INTEGER,
+    created_at TEXT NOT NULL DEFAULT (current_timestamp)
+  );
+`);
 
 export const db = drizzle(
   async (sql, params, method) => {

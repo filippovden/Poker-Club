@@ -18,6 +18,9 @@ const tournamentSchema = z
     maxPlayers: z.coerce.number().int().min(1).nullable(),
     tableCount: z.coerce.number().int().min(1).nullable(),
     seatsPerTable: z.coerce.number().int().min(1).nullable(),
+    startingStack: z.coerce.number().int().min(0).nullable(),
+    rebuyChips: z.coerce.number().int().min(0).nullable(),
+    addonChips: z.coerce.number().int().min(0).nullable(),
     description: z.string().nullable(),
     status: z.enum(["upcoming", "live", "completed"]),
   })
@@ -89,6 +92,9 @@ export async function createTournamentAction(
     maxPlayers: formData.get("maxPlayers") || null,
     tableCount: formData.get("tableCount") || null,
     seatsPerTable: formData.get("seatsPerTable") || null,
+    startingStack: formData.get("startingStack") || null,
+    rebuyChips: formData.get("rebuyChips") || null,
+    addonChips: formData.get("addonChips") || null,
     description: formData.get("description") || null,
     status: formData.get("status") || "upcoming",
   });
@@ -128,6 +134,9 @@ export async function updateTournamentAction(
     maxPlayers: formData.get("maxPlayers") || null,
     tableCount: formData.get("tableCount") || null,
     seatsPerTable: formData.get("seatsPerTable") || null,
+    startingStack: formData.get("startingStack") || null,
+    rebuyChips: formData.get("rebuyChips") || null,
+    addonChips: formData.get("addonChips") || null,
     description: formData.get("description") || null,
     status: formData.get("status") || "upcoming",
   });

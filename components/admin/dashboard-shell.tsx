@@ -2,7 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Users, Command as CommandIcon, Copy } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Command as CommandIcon, Copy, PlayCircle } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { CommandPalette } from "./command-palette";
 import { TournamentFormDialog } from "./tournament-form-dialog";
 import { NewsFormDialog } from "./news-form-dialog";
 import { RegistrationsDialog } from "./registrations-dialog";
+import { LiveTournamentDialog } from "./live-tournament-dialog";
 import {
   createTournamentAction,
   updateTournamentAction,
@@ -66,6 +67,9 @@ export function DashboardShell({
     null,
   );
 
+  const [liveDialogOpen, setLiveDialogOpen] = useState(false);
+  const [liveTournament, setLiveTournament] = useState<Tournament | null>(null);
+
   const [newsDialogOpen, setNewsDialogOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null);
   const [newsError, setNewsError] = useState<string>();
@@ -119,6 +123,9 @@ export function DashboardShell({
             : null,
       tableCount,
       seatsPerTable,
+      startingStack: formData.get("startingStack") ? Number(formData.get("startingStack")) : null,
+      rebuyChips: formData.get("rebuyChips") ? Number(formData.get("rebuyChips")) : null,
+      addonChips: formData.get("addonChips") ? Number(formData.get("addonChips")) : null,
       description: String(formData.get("description") || "") || null,
       status: String(formData.get("status")) as Tournament["status"],
       createdAt: editingTournament?.createdAt ?? new Date().toISOString(),
@@ -314,6 +321,19 @@ export function DashboardShell({
                     >
                       <Users className="h-3.5 w-3.5" />
                     </button>
+                    {t.status !== "completed" && (
+                      <button
+                        onClick={() => {
+                          setLiveTournament(t);
+                          setLiveDialogOpen(true);
+                        }}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                        aria-label="Ход турнира"
+                        title="Ход турнира"
+                      >
+                        <PlayCircle className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setEditingTournament(t);
@@ -424,6 +444,12 @@ export function DashboardShell({
           seatsPerTable={registrationsTournament.seatsPerTable}
         />
       )}
+      <LiveTournamentDialog
+        open={liveDialogOpen}
+        onOpenChange={setLiveDialogOpen}
+        tournament={liveTournament}
+        onChanged={() => router.refresh()}
+      />
     </div>
   );
 }

@@ -28,6 +28,9 @@ export interface TournamentFormValues {
   format: "NLH" | "PLO" | "MTT";
   startsAt: string;
   buyIn: string;
+  startingStack: string;
+  rebuyChips: string;
+  addonChips: string;
   description: string;
   status: "upcoming" | "live" | "completed";
 }
@@ -117,6 +120,39 @@ function TournamentFormFields({
             type="number"
             min={0}
             defaultValue={source?.buyIn ?? ""}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="startingStack">Стартовый стек (фишки)</Label>
+          <Input
+            id="startingStack"
+            name="startingStack"
+            type="number"
+            min={0}
+            defaultValue={source?.startingStack ?? ""}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="rebuyChips">Ребай (фишки)</Label>
+          <Input
+            id="rebuyChips"
+            name="rebuyChips"
+            type="number"
+            min={0}
+            defaultValue={source?.rebuyChips ?? ""}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="addonChips">Аддон (фишки)</Label>
+          <Input
+            id="addonChips"
+            name="addonChips"
+            type="number"
+            min={0}
+            defaultValue={source?.addonChips ?? ""}
           />
         </div>
       </div>
