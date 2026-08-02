@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray, not } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, not } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { registrations, tournaments, type Tournament } from "@/lib/db/schema";
 import { setRegistrationStatus } from "@/lib/registrations/set-status";
@@ -147,11 +147,10 @@ async function getSpotsLeft(tournament: Tournament): Promise<number | null> {
 // --- multi-step "Подать заявку" conversation ----------------------------
 
 interface PendingApplication {
-  step: "name" | "phone" | "email" | "consent";
+  step: "name" | "phone" | "consent";
   tournamentId: number;
   name?: string;
   phone?: string;
-  email?: string | null;
 }
 
 // Kept in memory only — if the server restarts mid-conversation the user
@@ -161,7 +160,7 @@ const pendingApplications = new Map<number, PendingApplication>();
 
 const ABORT_BUTTON = [[{ text: "Отмена", callback_data: "apply_abort" }]];
 
-async function startApplication(chatId: number, tournamentId?: number) {
+async function startApplication(chatId: number, tournamentId?: number, skipReuse = false) {
   const tournament = tournamentId
     ? await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1).then((r) => r[0])
     : await getNextTournament();
@@ -172,6 +171,39 @@ async function startApplication(chatId: number, tournamentId?: number) {
     );
     return;
   }
+
+  // Returning applicants shouldn't have to retype name/phone every time —
+  // reuse whatever they gave on their most recent application, if any.
+  const [previous] = skipReuse
+    ? []
+    : await db
+        .select({ name: registrations.name, phone: registrations.phone })
+        .from(registrations)
+        .where(eq(registrations.telegramChatId, String(chatId)))
+        .orderBy(desc(registrations.createdAt))
+        .limit(1);
+
+  if (previous) {
+    pendingApplications.set(chatId, {
+      step: "consent",
+      tournamentId: tournament.id,
+      name: previous.name,
+      phone: previous.phone,
+    });
+    await sendTelegramMessage(
+      chatId,
+      buildApplicationSummaryMessage({ name: previous.name, phone: previous.phone, tournament }),
+      {
+        buttons: [
+          [{ text: "✅ Отправить заявку", callback_data: "apply_confirm" }],
+          [{ text: "✏️ Указать другие данные", callback_data: "apply_restart" }],
+          [{ text: "Отмена", callback_data: "apply_abort" }],
+        ],
+      },
+    );
+    return;
+  }
+
   pendingApplications.set(chatId, { step: "name", tournamentId: tournament.id });
   await sendTelegramMessage(chatId, "Как вас зовут?", { buttons: ABORT_BUTTON });
 }
@@ -204,24 +236,6 @@ async function continueApplication(chatId: number, text: string) {
       return;
     }
     state.phone = phone;
-    state.step = "email";
-    await sendTelegramMessage(
-      chatId,
-      'Email (необязательно) — отправьте "-", чтобы пропустить:',
-      { buttons: ABORT_BUTTON },
-    );
-    return;
-  }
-
-  if (state.step === "email") {
-    const email = text.trim();
-    if (email !== "-" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      await sendTelegramMessage(chatId, "Похоже на некорректный email, попробуйте ещё раз:", {
-        buttons: ABORT_BUTTON,
-      });
-      return;
-    }
-    state.email = email === "-" ? null : email;
     state.step = "consent";
 
     const tournament = await db
@@ -238,12 +252,7 @@ async function continueApplication(chatId: number, text: string) {
 
     await sendTelegramMessage(
       chatId,
-      buildApplicationSummaryMessage({
-        name: state.name!,
-        phone: state.phone!,
-        email: state.email,
-        tournament,
-      }),
+      buildApplicationSummaryMessage({ name: state.name!, phone: state.phone, tournament }),
       {
         buttons: [
           [{ text: "✅ Отправить заявку", callback_data: "apply_confirm" }],
@@ -266,7 +275,6 @@ async function confirmApplication(chatId: number, telegramUsername?: string) {
     tournamentId: state.tournamentId,
     name: state.name,
     phone: state.phone,
-    email: state.email,
     telegramChatId: String(chatId),
     telegramUsername,
   });
@@ -695,7 +703,7 @@ async function handleAdminCancelCallback(
 
 async function handleApplyCallback(
   query: NonNullable<TelegramUpdate["callback_query"]>,
-  action: "confirm" | "abort",
+  action: "confirm" | "abort" | "restart",
 ) {
   if (!query.message) return;
   const chatId = query.message.chat.id;
@@ -704,6 +712,17 @@ async function handleApplyCallback(
     pendingApplications.delete(chatId);
     await answerCallbackQuery(query.id, "Отменено");
     await editMessageText(chatId, query.message.message_id, "Отменено.", { removeButtons: true });
+    return;
+  }
+
+  if (action === "restart") {
+    const state = pendingApplications.get(chatId);
+    if (!state) return;
+    await answerCallbackQuery(query.id);
+    await editMessageText(chatId, query.message.message_id, query.message.text ?? "", {
+      removeButtons: true,
+    });
+    await startApplication(chatId, state.tournamentId, true);
     return;
   }
 
@@ -752,6 +771,10 @@ async function handleCallbackQuery(update: TelegramUpdate) {
 
   if (query.data === "apply_confirm") {
     await handleApplyCallback(query, "confirm");
+    return;
+  }
+  if (query.data === "apply_restart") {
+    await handleApplyCallback(query, "restart");
     return;
   }
   if (query.data === "apply_abort") {

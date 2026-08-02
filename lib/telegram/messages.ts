@@ -233,15 +233,13 @@ export function buildParticipantsListMessage(
 export function buildApplicationSummaryMessage(params: {
   name: string;
   phone: string;
-  email?: string | null;
   tournament: TournamentInfo;
 }) {
-  const { name, phone, email, tournament } = params;
+  const { name, phone, tournament } = params;
   return (
     `Проверьте данные перед отправкой:\n\n` +
     `👤 ${escapeHtml(name)}\n` +
     `📞 ${escapeHtml(phone)}\n` +
-    `✉️ ${email ? escapeHtml(email) : "—"}\n` +
     `🃏 ${escapeHtml(tournament.title)}\n` +
     `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}\n\n` +
     `Отправляя заявку, вы соглашаетесь на обработку персональных данных и подтверждаете, что вам исполнилось 18 лет.`
