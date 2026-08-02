@@ -11,6 +11,7 @@ import { SITE_CONTENT } from "@/lib/content";
 
 const LINKS = [
   { href: "/tournaments", label: "Турниры" },
+  { href: "/rating", label: "Рейтинг" },
   { href: "/news", label: "Новости" },
   { href: "/about", label: "О клубе" },
 ];

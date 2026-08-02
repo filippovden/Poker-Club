@@ -41,6 +41,9 @@ export function Footer() {
           <Link href="/tournaments" className="hover:text-[var(--foreground)]">
             Турниры
           </Link>
+          <Link href="/rating" className="hover:text-[var(--foreground)]">
+            Рейтинг
+          </Link>
           <Link href="/news" className="hover:text-[var(--foreground)]">
             Новости
           </Link>

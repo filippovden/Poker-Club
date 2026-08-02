@@ -1,0 +1,71 @@
+import type { Metadata } from "next";
+import { desc } from "drizzle-orm";
+import { Reveal, RevealGroup, RevealItem } from "@/components/reveal";
+import { Badge } from "@/components/ui/badge";
+import { db } from "@/lib/db/client";
+import { players } from "@/lib/db/schema";
+import { SITE_CONTENT } from "@/lib/content";
+
+const RATING_DESCRIPTION = `Рейтинг игроков ${SITE_CONTENT.clubName} по результатам турниров.`;
+
+export const metadata: Metadata = {
+  title: "Рейтинг",
+  description: RATING_DESCRIPTION,
+  alternates: { canonical: "/rating" },
+  openGraph: { title: `Рейтинг — ${SITE_CONTENT.clubName}`, description: RATING_DESCRIPTION },
+};
+
+export const revalidate = 0;
+
+export default async function RatingPage() {
+  const ranked = await db.select().from(players).orderBy(desc(players.rating));
+
+  return (
+    <div className="mx-auto max-w-3xl px-6 py-28 sm:py-32">
+      <Reveal className="mb-6">
+        <Badge variant="accent">Рейтинг клуба</Badge>
+      </Reveal>
+      <Reveal delay={0.05}>
+        <h1 className="font-display text-[clamp(2rem,6vw,3.5rem)] font-medium tracking-tight">
+          Рейтинг игроков
+        </h1>
+        <p className="mt-6 max-w-xl text-lg leading-relaxed text-[var(--muted-foreground)]">
+          Рейтинг обновляется после завершения каждого турнира: место в
+          верхней половине сетки повышает рейтинг, в нижней — понижает, тем
+          сильнее, чем больше был турнир.
+        </p>
+      </Reveal>
+
+      <section className="mt-14">
+        {ranked.length === 0 ? (
+          <p className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center text-sm text-[var(--muted-foreground)]">
+            Рейтинг пока пуст — станет доступен после первого завершённого турнира.
+          </p>
+        ) : (
+          <RevealGroup className="overflow-hidden rounded-xl border border-[var(--border)]">
+            {ranked.map((p, i) => (
+              <RevealItem key={p.id}>
+                <div className="flex items-center justify-between gap-4 border-b border-[var(--border)] px-5 py-4 last:border-0">
+                  <div className="flex items-center gap-4">
+                    <span className="w-6 shrink-0 text-sm font-semibold text-[var(--muted-foreground)]">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="font-medium">{p.name}</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        Турниров: {p.tournamentsPlayed}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-display text-lg font-medium text-[var(--accent)]">
+                    {Math.round(p.rating)}
+                  </span>
+                </div>
+              </RevealItem>
+            ))}
+          </RevealGroup>
+        )}
+      </section>
+    </div>
+  );
+}
