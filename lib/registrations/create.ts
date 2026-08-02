@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, count, eq, or } from "drizzle-orm";
+import { and, count, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { registrations, tournaments, type Tournament } from "@/lib/db/schema";
 import { sendTelegramMessage } from "@/lib/telegram/client";
@@ -47,13 +47,22 @@ export async function createRegistration(params: {
   // Once approved seats reach the cap, registration closes outright rather
   // than queuing new applications as a waitlist — organizers asked for new
   // signups to stop appearing once a tournament is full, not just capped
-  // at approval time.
+  // at approval time. Once the tournament starts, those same players move
+  // from "approved" to "playing" and then "eliminated" as they bust — they
+  // still occupy the cap, so all three count as taken seats (otherwise a
+  // full tournament would silently reopen registration the moment it went
+  // live).
   if (tournament.maxPlayers) {
-    const [{ value: approvedCount }] = await db
+    const [{ value: takenCount }] = await db
       .select({ value: count() })
       .from(registrations)
-      .where(and(eq(registrations.tournamentId, tournamentId), eq(registrations.status, "approved")));
-    if (approvedCount >= tournament.maxPlayers) {
+      .where(
+        and(
+          eq(registrations.tournamentId, tournamentId),
+          inArray(registrations.status, ["approved", "playing", "eliminated"]),
+        ),
+      );
+    if (takenCount >= tournament.maxPlayers) {
       return { error: "Все места заняты — регистрация на этот турнир закрыта." };
     }
   }

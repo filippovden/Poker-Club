@@ -1,4 +1,4 @@
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, inArray, isNotNull } from "drizzle-orm";
 import { db } from "./client";
 import { registrations } from "./schema";
 
@@ -7,6 +7,10 @@ export interface SeatAssignment {
   seatNumber: number;
 }
 
+// Public seat map: a seat stays "taken" through "approved" (pre-start) and
+// "playing" (live), but frees up once its occupant is "eliminated" — they've
+// physically left the table, even though the row itself keeps its old
+// table/seat number as a historical record.
 export async function getSeatAssignments(): Promise<Record<number, SeatAssignment[]>> {
   const rows = await db
     .select({
@@ -17,7 +21,7 @@ export async function getSeatAssignments(): Promise<Record<number, SeatAssignmen
     .from(registrations)
     .where(
       and(
-        eq(registrations.status, "approved"),
+        inArray(registrations.status, ["approved", "playing"]),
         isNotNull(registrations.tableNumber),
         isNotNull(registrations.seatNumber),
       ),

@@ -63,12 +63,17 @@ export function DashboardShell({
   const [tournamentPending, setTournamentPending] = useState(false);
 
   const [registrationsDialogOpen, setRegistrationsDialogOpen] = useState(false);
-  const [registrationsTournament, setRegistrationsTournament] = useState<Tournament | null>(
-    null,
-  );
+  const [registrationsTournamentId, setRegistrationsTournamentId] = useState<number | null>(null);
+  // Derived from the live list (rather than snapshotted at click time) so
+  // that starting/finishing a tournament while its dialog is open — which
+  // changes its status via router.refresh() — updates what the open dialog
+  // sees without the admin having to close and reopen it.
+  const registrationsTournament =
+    optimisticTournaments.find((t) => t.id === registrationsTournamentId) ?? null;
 
   const [liveDialogOpen, setLiveDialogOpen] = useState(false);
-  const [liveTournament, setLiveTournament] = useState<Tournament | null>(null);
+  const [liveTournamentId, setLiveTournamentId] = useState<number | null>(null);
+  const liveTournament = optimisticTournaments.find((t) => t.id === liveTournamentId) ?? null;
 
   const [newsDialogOpen, setNewsDialogOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null);
@@ -318,7 +323,7 @@ export function DashboardShell({
                   <div className="flex shrink-0 gap-1">
                     <button
                       onClick={() => {
-                        setRegistrationsTournament(t);
+                        setRegistrationsTournamentId(t.id);
                         setRegistrationsDialogOpen(true);
                       }}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
@@ -327,19 +332,17 @@ export function DashboardShell({
                     >
                       <Users className="h-3.5 w-3.5" />
                     </button>
-                    {t.status !== "completed" && (
-                      <button
-                        onClick={() => {
-                          setLiveTournament(t);
-                          setLiveDialogOpen(true);
-                        }}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
-                        aria-label="Ход турнира"
-                        title="Ход турнира"
-                      >
-                        <PlayCircle className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        setLiveTournamentId(t.id);
+                        setLiveDialogOpen(true);
+                      }}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      aria-label="Ход турнира"
+                      title="Ход турнира"
+                    >
+                      <PlayCircle className="h-3.5 w-3.5" />
+                    </button>
                     <button
                       onClick={() => {
                         setEditingTournament(t);

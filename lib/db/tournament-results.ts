@@ -1,4 +1,4 @@
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, inArray, isNotNull } from "drizzle-orm";
 import { db } from "./client";
 import { registrations } from "./schema";
 
@@ -7,6 +7,10 @@ export interface TournamentResultRow {
   place: number;
 }
 
+// Two ways a registration ends up with a final place: the older workflow
+// where an organizer types it in manually on an "approved" row, and the
+// live-play flow where "eliminated" rows get theirs assigned automatically
+// as players bust out. Both need to show up in public results.
 export async function getTournamentResults(): Promise<Record<number, TournamentResultRow[]>> {
   const rows = await db
     .select({
@@ -15,7 +19,7 @@ export async function getTournamentResults(): Promise<Record<number, TournamentR
       place: registrations.place,
     })
     .from(registrations)
-    .where(and(eq(registrations.status, "approved"), isNotNull(registrations.place)));
+    .where(and(inArray(registrations.status, ["approved", "eliminated"]), isNotNull(registrations.place)));
 
   const map: Record<number, TournamentResultRow[]> = {};
   for (const row of rows) {

@@ -3,6 +3,7 @@ import { db } from "@/lib/db/client";
 import { registrations, tournaments, type Tournament } from "@/lib/db/schema";
 import { setRegistrationStatus } from "@/lib/registrations/set-status";
 import { createRegistration } from "@/lib/registrations/create";
+import { normalizePhone } from "@/lib/phone";
 import {
   answerCallbackQuery,
   editMessageText,
@@ -106,13 +107,6 @@ async function buildAdminCancelButtons(rows: { id: number; name: string; tournam
   );
 }
 
-// Russian numbers get written as +7960..., 8960..., or bare 960... — all
-// the same number — so phone comparison uses only the last 10 digits
-// rather than the raw digit string.
-function last10Digits(value: string) {
-  return value.replace(/\D/g, "").slice(-10);
-}
-
 // SQLite's LIKE only case-folds ASCII, so a plain SQL query would miss
 // "сурен" matching "Сурен" — filtering in JS with .toLowerCase() handles
 // Cyrillic correctly, and the registrations table is small enough that
@@ -129,7 +123,7 @@ function matchesSearchQuery(
 
   const digitsQ = rawQuery.replace(/\D/g, "");
   if (digitsQ.length >= 4) {
-    if (last10Digits(r.phone).includes(last10Digits(rawQuery))) return true;
+    if (normalizePhone(r.phone).includes(normalizePhone(rawQuery))) return true;
     if (r.telegramChatId && r.telegramChatId.includes(digitsQ)) return true;
   }
   return false;
@@ -137,11 +131,16 @@ function matchesSearchQuery(
 
 async function getSpotsLeft(tournament: Tournament): Promise<number | null> {
   if (tournament.maxPlayers == null) return null;
-  const [{ value: approvedCount }] = await db
+  const [{ value: takenCount }] = await db
     .select({ value: count() })
     .from(registrations)
-    .where(and(eq(registrations.tournamentId, tournament.id), eq(registrations.status, "approved")));
-  return tournament.maxPlayers - approvedCount;
+    .where(
+      and(
+        eq(registrations.tournamentId, tournament.id),
+        inArray(registrations.status, ["approved", "playing", "eliminated"]),
+      ),
+    );
+  return tournament.maxPlayers - takenCount;
 }
 
 // --- multi-step "Подать заявку" conversation ----------------------------
@@ -473,7 +472,12 @@ async function handleParticipantsList(chatId: number) {
     .select()
     .from(registrations)
     .where(eq(registrations.tournamentId, tournament.id));
-  const approved = rows.filter((r) => r.status === "approved");
+  // Once the tournament starts, confirmed players move from "approved"
+  // through "playing"/"eliminated" — the roster should still list them as
+  // confirmed rather than appearing to lose everyone the moment it goes live.
+  const approved = rows.filter(
+    (r) => r.status === "approved" || r.status === "playing" || r.status === "eliminated",
+  );
   const pending = rows.filter((r) => r.status === "pending");
 
   await sendPossiblyLongMessage(chatId, buildParticipantsListMessage(tournament, approved, pending), {

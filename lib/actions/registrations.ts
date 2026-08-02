@@ -11,6 +11,7 @@ import { setRegistrationStatus } from "@/lib/registrations/set-status";
 import { createRegistration } from "@/lib/registrations/create";
 import { planBalancedSeats, shuffle } from "@/lib/tournaments/seating";
 import { computeRatingChange } from "@/lib/tournaments/rating";
+import { normalizePhone } from "@/lib/phone";
 import type { ActionResult } from "@/lib/actions/tournaments";
 
 const registerSchema = z.object({
@@ -94,6 +95,12 @@ export async function cancelRegistrationAction(token: string) {
     .limit(1);
 
   if (!registration) return { error: "Регистрация не найдена или уже отменена" };
+  // An old bookmarked cancel link shouldn't be able to pull a player out of
+  // a tournament that's already underway or finished — that would delete
+  // their live stack/place and the rating history built on top of it.
+  if (registration.status === "playing" || registration.status === "eliminated") {
+    return { error: "Турнир уже начался — самостоятельная отмена недоступна, обратитесь к организатору" };
+  }
 
   await db.delete(registrations).where(eq(registrations.cancelToken, token));
   revalidatePath("/tournaments");
@@ -315,14 +322,22 @@ export async function adminEliminatePlayer(registrationId: number): Promise<Elim
     type: "eliminate",
   });
 
+  // Normally the admin never clicks "eliminate" on the very last player (no
+  // one is left to bust them), so `remaining === 1` is the common finish —
+  // that lone survivor is auto-crowned 1st. But if the last player *is*
+  // eliminated directly (e.g. a manual correction), `remaining === 0` still
+  // means the tournament is over, just with no one left to crown.
+  const remaining = live.length - 1;
   let tournamentFinished = false;
-  if (live.length - 1 === 1) {
-    const winner = live.find((r) => r.id !== registrationId);
-    if (winner) {
-      await db
-        .update(registrations)
-        .set({ status: "eliminated", place: 1, eliminatedAt: new Date().toISOString() })
-        .where(eq(registrations.id, winner.id));
+  if (remaining <= 1) {
+    if (remaining === 1) {
+      const winner = live.find((r) => r.id !== registrationId);
+      if (winner) {
+        await db
+          .update(registrations)
+          .set({ status: "eliminated", place: 1, eliminatedAt: new Date().toISOString() })
+          .where(eq(registrations.id, winner.id));
+      }
     }
     tournamentFinished = true;
   }
@@ -370,11 +385,12 @@ export async function adminFinishTournament(tournamentId: number): Promise<Finis
   let ratingsUpdated = 0;
 
   for (const reg of finished) {
-    let [player] = await db.select().from(players).where(eq(players.phone, reg.phone)).limit(1);
+    const phone = normalizePhone(reg.phone);
+    let [player] = await db.select().from(players).where(eq(players.phone, phone)).limit(1);
     if (!player) {
       const [created] = await db
         .insert(players)
-        .values({ phone: reg.phone, name: reg.name, telegramChatId: reg.telegramChatId })
+        .values({ phone, name: reg.name, telegramChatId: reg.telegramChatId })
         .returning();
       player = created;
     }

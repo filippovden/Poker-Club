@@ -1,4 +1,4 @@
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { registrations, tournaments } from "@/lib/db/schema";
 import { sendTelegramMessage } from "@/lib/telegram/client";
@@ -35,13 +35,20 @@ export async function setRegistrationStatus(
   // enforced here, at the moment someone is actually confirmed a seat —
   // otherwise a quick tap on the Telegram button could overbook a tournament.
   if (status === "approved" && registration.status !== "approved" && tournament?.maxPlayers) {
-    const [{ value: approvedCount }] = await db
+    // Once the tournament starts, already-confirmed players move from
+    // "approved" through "playing"/"eliminated" — they still occupy the
+    // cap, so a late approval (e.g. a walk-up) has to count all three or
+    // it could overbook a tournament that's actually already full.
+    const [{ value: takenCount }] = await db
       .select({ value: count() })
       .from(registrations)
       .where(
-        and(eq(registrations.tournamentId, registration.tournamentId), eq(registrations.status, "approved")),
+        and(
+          eq(registrations.tournamentId, registration.tournamentId),
+          inArray(registrations.status, ["approved", "playing", "eliminated"]),
+        ),
       );
-    if (approvedCount >= tournament.maxPlayers) {
+    if (takenCount >= tournament.maxPlayers) {
       return { error: "Все места заняты — сначала освободите место (отмените другую заявку)" };
     }
   }

@@ -19,14 +19,9 @@ import {
 } from "@/lib/actions/registrations";
 import type { Registration, Tournament } from "@/lib/db/schema";
 
-function askMoney(defaultValue: number | null): number | null {
-  const raw = window.prompt(
-    "Сумма (₽), внесённая игроком:",
-    defaultValue != null ? String(defaultValue) : "",
-  );
-  if (raw === null) return null;
-  const value = Number(raw.trim());
-  return Number.isFinite(value) && value >= 0 ? value : 0;
+interface PendingStackAction {
+  reg: Registration;
+  type: "rebuy" | "addon";
 }
 
 function LiveTournamentBody({
@@ -39,6 +34,8 @@ function LiveTournamentBody({
   const [list, setList] = useState<Registration[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [pendingStackAction, setPendingStackAction] = useState<PendingStackAction | null>(null);
+  const [amountInput, setAmountInput] = useState("");
 
   async function refresh() {
     setList(await adminListRegistrations(tournament.id));
@@ -69,31 +66,35 @@ function LiveTournamentBody({
   for (const seats of tables.values()) seats.sort((a, b) => (a.seatNumber ?? 0) - (b.seatNumber ?? 0));
 
   async function start() {
+    const wasLive = tournament.status === "live";
     setBusy(true);
     setNote(null);
     const result = await adminStartTournament(tournament.id);
     setBusy(false);
-    setNote(result.error ?? "Турнир запущен.");
+    setNote(result.error ?? (wasLive ? "Игроки заведены в игру." : "Турнир запущен."));
     await refresh();
     onChanged();
   }
 
-  async function rebuy(reg: Registration) {
-    const money = askMoney(tournament.buyIn);
-    if (money === null) return;
-    setBusy(true);
-    const result = await adminRebuyOrAddon(reg.id, "rebuy", tournament.rebuyChips ?? 0, money);
-    setBusy(false);
-    setNote(result.error ?? null);
-    await refresh();
+  function openStackAction(reg: Registration, type: "rebuy" | "addon") {
+    setNote(null);
+    setPendingStackAction({ reg, type });
+    setAmountInput(tournament.buyIn != null ? String(tournament.buyIn) : "");
   }
 
-  async function addon(reg: Registration) {
-    const money = askMoney(tournament.buyIn);
-    if (money === null) return;
+  async function confirmStackAction() {
+    if (!pendingStackAction) return;
+    const money = Number(amountInput);
+    if (!Number.isFinite(money) || money < 0) {
+      setNote("Некорректная сумма");
+      return;
+    }
+    const { reg, type } = pendingStackAction;
+    const chips = type === "rebuy" ? (tournament.rebuyChips ?? 0) : (tournament.addonChips ?? 0);
     setBusy(true);
-    const result = await adminRebuyOrAddon(reg.id, "addon", tournament.addonChips ?? 0, money);
+    const result = await adminRebuyOrAddon(reg.id, type, chips, money);
     setBusy(false);
+    setPendingStackAction(null);
     setNote(result.error ?? null);
     await refresh();
   }
@@ -132,6 +133,37 @@ function LiveTournamentBody({
         </p>
       )}
 
+      {pendingStackAction && (
+        <div className="flex items-center gap-2 rounded-lg border border-[var(--accent)]/40 bg-[var(--surface-2)] p-3">
+          <p className="min-w-0 flex-1 truncate text-xs">
+            {pendingStackAction.type === "rebuy" ? "Ребай" : "Аддон"}: {pendingStackAction.reg.name} — сумма, ₽
+          </p>
+          <input
+            type="number"
+            min={0}
+            autoFocus
+            value={amountInput}
+            onChange={(e) => setAmountInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") confirmStackAction();
+              if (e.key === "Escape") setPendingStackAction(null);
+            }}
+            className="h-8 w-24 shrink-0 rounded-lg border border-[var(--border)] bg-transparent px-2 text-xs"
+          />
+          <Button size="sm" onClick={confirmStackAction} disabled={busy} className="shrink-0">
+            OK
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setPendingStackAction(null)}
+            className="shrink-0"
+          >
+            Отмена
+          </Button>
+        </div>
+      )}
+
       {tournament.status === "upcoming" && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] p-3">
           <p className="text-xs text-[var(--muted-foreground)]">
@@ -153,6 +185,17 @@ function LiveTournamentBody({
               Завершить турнир
             </Button>
           </div>
+
+          {seatedApproved.length > 0 && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--accent)]/40 bg-[var(--surface-2)] p-3">
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Рассажены, но ещё не в игре: {seatedApproved.length}
+              </p>
+              <Button size="sm" onClick={start} disabled={busy}>
+                Завести в игру
+              </Button>
+            </div>
+          )}
 
           <div className="flex flex-col gap-3">
             {[...tables.entries()]
@@ -178,7 +221,7 @@ function LiveTournamentBody({
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <button
-                            onClick={() => rebuy(r)}
+                            onClick={() => openStackAction(r, "rebuy")}
                             disabled={busy}
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
                             aria-label="Ребай"
@@ -187,7 +230,7 @@ function LiveTournamentBody({
                             <Coins className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            onClick={() => addon(r)}
+                            onClick={() => openStackAction(r, "addon")}
                             disabled={busy}
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
                             aria-label="Аддон"
@@ -237,6 +280,12 @@ function LiveTournamentBody({
       {tournament.status === "upcoming" && seatedApproved.length === 0 && (
         <p className="py-4 text-center text-sm text-[var(--muted-foreground)]">
           Сначала одобрите заявки и рассадите игроков по столам.
+        </p>
+      )}
+
+      {tournament.status === "completed" && eliminated.length === 0 && (
+        <p className="py-4 text-center text-sm text-[var(--muted-foreground)]">
+          Турнир завершён без записанных результатов live-игры.
         </p>
       )}
     </div>

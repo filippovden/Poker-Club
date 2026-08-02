@@ -36,6 +36,8 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   pending: { label: "Ожидает", className: "text-[var(--muted-foreground)]" },
   approved: { label: "Одобрена", className: "text-[var(--live)]" },
   rejected: { label: "Отклонена", className: "text-[var(--danger)]" },
+  playing: { label: "В игре", className: "text-[var(--live)]" },
+  eliminated: { label: "Выбыл", className: "text-[var(--muted-foreground)]" },
 };
 
 function RegistrationsList({
@@ -159,10 +161,18 @@ function RegistrationsList({
                         Стол {r.tableNumber}, место {r.seatNumber}
                       </p>
                     )}
+                    {r.status === "playing" && r.tableNumber != null && (
+                      <p className="text-xs text-[var(--accent)]">
+                        Стол {r.tableNumber}, место {r.seatNumber} · стек {r.currentStack ?? "—"}
+                      </p>
+                    )}
+                    {r.status === "eliminated" && r.place != null && (
+                      <p className="text-xs text-[var(--accent)]">{r.place} место</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  {r.status === "approved" && (
+                  {(r.status === "approved" || r.status === "eliminated") && (
                     <input
                       type="number"
                       min={1}
@@ -183,7 +193,7 @@ function RegistrationsList({
                       <Armchair className="h-3.5 w-3.5" />
                     </button>
                   )}
-                  {r.status !== "approved" && (
+                  {(r.status === "pending" || r.status === "rejected") && (
                     <button
                       onClick={() => setStatus(r.id, "approved")}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--live)]/10 hover:text-[var(--live)]"
@@ -193,7 +203,7 @@ function RegistrationsList({
                       <Check className="h-3.5 w-3.5" />
                     </button>
                   )}
-                  {r.status !== "rejected" && (
+                  {(r.status === "pending" || r.status === "approved") && (
                     <button
                       onClick={() => setStatus(r.id, "rejected")}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
@@ -203,14 +213,16 @@ function RegistrationsList({
                       <X className="h-3.5 w-3.5" />
                     </button>
                   )}
-                  <button
-                    onClick={() => remove(r.id)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
-                    aria-label="Удалить заявку"
-                    title="Удалить заявку"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  {r.status !== "playing" && (
+                    <button
+                      onClick={() => remove(r.id)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                      aria-label="Удалить заявку"
+                      title="Удалить заявку"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             );

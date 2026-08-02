@@ -28,7 +28,7 @@ export async function checkReminders() {
       .from(tournaments)
       .where(eq(tournaments.id, registration.tournamentId))
       .limit(1);
-    if (!tournament || tournament.status === "completed") continue;
+    if (!tournament || tournament.status === "completed" || tournament.isHidden) continue;
 
     const hoursUntil = (new Date(tournament.startsAt).getTime() - now) / 3_600_000;
     if (hoursUntil <= 0) continue;
