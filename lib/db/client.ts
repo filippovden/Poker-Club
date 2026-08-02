@@ -60,107 +60,82 @@ sqlite.exec(`
   );
 `);
 
+// Next's build collects page data across several worker processes that
+// each open their own handle to this same file — a worker can lose the
+// race between checking PRAGMA table_info and running its ALTER TABLE to
+// another worker doing the same migration, which fails outright with
+// "duplicate column name" rather than just meaning the column is already
+// there. That's a success case here, not a real error, so it's swallowed.
+function addColumnIfMissing(table: string, column: string, ddl: string) {
+  const existing = sqlite.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (existing.some((c) => c.name === column)) return;
+  try {
+    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl};`);
+  } catch (err) {
+    if (!(err instanceof Error) || !/duplicate column/i.test(err.message)) throw err;
+  }
+}
+
 // tournaments.max_players was added after initial release — backfill the
 // column on existing databases instead of requiring a fresh data.sqlite.
-const tournamentColumns = sqlite
-  .prepare("PRAGMA table_info(tournaments)")
-  .all() as { name: string }[];
-if (!tournamentColumns.some((c) => c.name === "max_players")) {
-  sqlite.exec("ALTER TABLE tournaments ADD COLUMN max_players INTEGER;");
-}
+addColumnIfMissing("tournaments", "max_players", "INTEGER");
 
 // registrations.status was added after initial release (pending/approved/
 // rejected application flow) — backfill for existing databases.
-const registrationColumns = sqlite
-  .prepare("PRAGMA table_info(registrations)")
-  .all() as { name: string }[];
-if (!registrationColumns.some((c) => c.name === "status")) {
-  sqlite.exec("ALTER TABLE registrations ADD COLUMN status TEXT NOT NULL DEFAULT 'pending';");
-}
+addColumnIfMissing("registrations", "status", "TEXT NOT NULL DEFAULT 'pending'");
 
 // tournaments.table_count/seats_per_table and registrations.table_number/
 // seat_number power the seating grid + admin seat assignment — backfill.
-if (!tournamentColumns.some((c) => c.name === "table_count")) {
-  sqlite.exec("ALTER TABLE tournaments ADD COLUMN table_count INTEGER;");
-}
-if (!tournamentColumns.some((c) => c.name === "seats_per_table")) {
-  sqlite.exec("ALTER TABLE tournaments ADD COLUMN seats_per_table INTEGER;");
-}
-if (!registrationColumns.some((c) => c.name === "table_number")) {
-  sqlite.exec("ALTER TABLE registrations ADD COLUMN table_number INTEGER;");
-}
-if (!registrationColumns.some((c) => c.name === "seat_number")) {
-  sqlite.exec("ALTER TABLE registrations ADD COLUMN seat_number INTEGER;");
-}
+addColumnIfMissing("tournaments", "table_count", "INTEGER");
+addColumnIfMissing("tournaments", "seats_per_table", "INTEGER");
+addColumnIfMissing("registrations", "table_number", "INTEGER");
+addColumnIfMissing("registrations", "seat_number", "INTEGER");
 
 // registrations.telegram_chat_id + reminded_* power the Telegram bot
 // (linking a registration to a chat, and tracking which pre-tournament
 // reminders already went out) — backfill for existing databases.
-if (!registrationColumns.some((c) => c.name === "telegram_chat_id")) {
-  sqlite.exec("ALTER TABLE registrations ADD COLUMN telegram_chat_id TEXT;");
-}
+addColumnIfMissing("registrations", "telegram_chat_id", "TEXT");
 for (const col of ["reminded_72h", "reminded_48h", "reminded_24h", "reminded_2h"]) {
-  if (!registrationColumns.some((c) => c.name === col)) {
-    sqlite.exec(`ALTER TABLE registrations ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0;`);
-  }
+  addColumnIfMissing("registrations", col, "INTEGER NOT NULL DEFAULT 0");
 }
 
 // registrations.place holds the final standing (1st, 2nd, ...) once a
 // tournament is marked completed — backfill for existing databases.
-if (!registrationColumns.some((c) => c.name === "place")) {
-  sqlite.exec("ALTER TABLE registrations ADD COLUMN place INTEGER;");
-}
+addColumnIfMissing("registrations", "place", "INTEGER");
 
 // news.category (announcement/results/general) was added after initial
 // release — backfill for existing databases.
-const newsColumns = sqlite.prepare("PRAGMA table_info(news)").all() as { name: string }[];
-if (!newsColumns.some((c) => c.name === "category")) {
-  sqlite.exec("ALTER TABLE news ADD COLUMN category TEXT NOT NULL DEFAULT 'general';");
-}
+addColumnIfMissing("news", "category", "TEXT NOT NULL DEFAULT 'general'");
 
 // registrations.telegram_username lets the admin chat's participant list
 // show a clickable @handle, not just phone/name — backfill for existing
 // databases.
-if (!registrationColumns.some((c) => c.name === "telegram_username")) {
-  sqlite.exec("ALTER TABLE registrations ADD COLUMN telegram_username TEXT;");
-}
+addColumnIfMissing("registrations", "telegram_username", "TEXT");
 
 // registrations.comment holds the applicant's optional free-text note —
 // backfill for existing databases.
-if (!registrationColumns.some((c) => c.name === "comment")) {
-  sqlite.exec("ALTER TABLE registrations ADD COLUMN comment TEXT;");
-}
+addColumnIfMissing("registrations", "comment", "TEXT");
 
 // tournaments.starting_stack/rebuy_chips/addon_chips power the live
 // rebuy/addon tracking — backfill for existing databases.
 for (const col of ["starting_stack", "rebuy_chips", "addon_chips"]) {
-  if (!tournamentColumns.some((c) => c.name === col)) {
-    sqlite.exec(`ALTER TABLE tournaments ADD COLUMN ${col} INTEGER;`);
-  }
+  addColumnIfMissing("tournaments", col, "INTEGER");
 }
+
+// tournaments.is_hidden marks admin-only test tournaments, kept out of
+// every public listing/broadcast — backfill for existing databases.
+addColumnIfMissing("tournaments", "is_hidden", "INTEGER NOT NULL DEFAULT 0");
 
 // registrations.player_id/current_stack/rebuy_count/addon_count/
 // total_spent/eliminated_at power live tournament play (stacks, rebuys,
 // addons, elimination order) and the cross-tournament rating system —
 // backfill for existing databases.
-if (!registrationColumns.some((c) => c.name === "player_id")) {
-  sqlite.exec("ALTER TABLE registrations ADD COLUMN player_id INTEGER REFERENCES players(id);");
-}
-if (!registrationColumns.some((c) => c.name === "current_stack")) {
-  sqlite.exec("ALTER TABLE registrations ADD COLUMN current_stack INTEGER;");
-}
-if (!registrationColumns.some((c) => c.name === "rebuy_count")) {
-  sqlite.exec("ALTER TABLE registrations ADD COLUMN rebuy_count INTEGER NOT NULL DEFAULT 0;");
-}
-if (!registrationColumns.some((c) => c.name === "addon_count")) {
-  sqlite.exec("ALTER TABLE registrations ADD COLUMN addon_count INTEGER NOT NULL DEFAULT 0;");
-}
-if (!registrationColumns.some((c) => c.name === "total_spent")) {
-  sqlite.exec("ALTER TABLE registrations ADD COLUMN total_spent INTEGER NOT NULL DEFAULT 0;");
-}
-if (!registrationColumns.some((c) => c.name === "eliminated_at")) {
-  sqlite.exec("ALTER TABLE registrations ADD COLUMN eliminated_at TEXT;");
-}
+addColumnIfMissing("registrations", "player_id", "INTEGER REFERENCES players(id)");
+addColumnIfMissing("registrations", "current_stack", "INTEGER");
+addColumnIfMissing("registrations", "rebuy_count", "INTEGER NOT NULL DEFAULT 0");
+addColumnIfMissing("registrations", "addon_count", "INTEGER NOT NULL DEFAULT 0");
+addColumnIfMissing("registrations", "total_spent", "INTEGER NOT NULL DEFAULT 0");
+addColumnIfMissing("registrations", "eliminated_at", "TEXT");
 
 // players/rating_history/tournament_actions are new tables added for the
 // cross-tournament rating system and the full stack-action audit log.

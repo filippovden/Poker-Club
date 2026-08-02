@@ -128,6 +128,7 @@ export function DashboardShell({
       addonChips: formData.get("addonChips") ? Number(formData.get("addonChips")) : null,
       description: String(formData.get("description") || "") || null,
       status: String(formData.get("status")) as Tournament["status"],
+      isHidden: formData.get("isHidden") === "on",
       createdAt: editingTournament?.createdAt ?? new Date().toISOString(),
     };
 
@@ -290,6 +291,11 @@ export function DashboardShell({
                     <Badge variant={t.status === "live" ? "live" : "outline"} className="shrink-0">
                       {t.status === "upcoming" ? "Скоро" : t.status === "live" ? "Live" : "Завершён"}
                     </Badge>
+                    {t.isHidden && (
+                      <Badge variant="outline" className="shrink-0 text-[var(--accent)]">
+                        Тест
+                      </Badge>
+                    )}
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium" title={t.title}>{t.title}</p>
                       <p className="truncate text-xs text-[var(--muted-foreground)]">

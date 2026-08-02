@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { tournaments } from "@/lib/db/schema";
 import { Reveal, RevealGroup, RevealItem } from "@/components/reveal";
@@ -16,7 +16,7 @@ export async function LiveTournamentsSection() {
     db
       .select()
       .from(tournaments)
-      .where(eq(tournaments.status, "upcoming"))
+      .where(and(eq(tournaments.status, "upcoming"), eq(tournaments.isHidden, false)))
       .orderBy(asc(tournaments.startsAt))
       .limit(3),
     getRegistrationCounts(),

@@ -33,6 +33,7 @@ export interface TournamentFormValues {
   addonChips: string;
   description: string;
   status: "upcoming" | "live" | "completed";
+  isHidden: boolean;
 }
 
 function TournamentFormFields({
@@ -57,12 +58,14 @@ function TournamentFormFields({
     source?.status ?? "upcoming",
   );
   const [useTables, setUseTables] = useState(source?.tableCount != null);
+  const [isHidden, setIsHidden] = useState(source?.isHidden ?? false);
 
   return (
     <form
       action={(formData) => {
         formData.set("format", format);
         formData.set("status", status);
+        formData.set("isHidden", isHidden ? "on" : "");
         onSubmit(formData);
       }}
       className="flex flex-col gap-4"
@@ -71,6 +74,11 @@ function TournamentFormFields({
         <Label htmlFor="title">Название</Label>
         <Input id="title" name="title" defaultValue={source?.title} required />
       </div>
+
+      <label className="flex items-center gap-2.5 rounded-lg border border-[var(--border)] p-3 text-sm font-medium">
+        <Checkbox checked={isHidden} onCheckedChange={(v) => setIsHidden(v === true)} />
+        Скрытый тестовый турнир (не отображается на сайте и не рассылается в боте)
+      </label>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-2">

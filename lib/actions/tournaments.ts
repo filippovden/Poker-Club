@@ -23,6 +23,7 @@ const tournamentSchema = z
     addonChips: z.coerce.number().int().min(0).nullable(),
     description: z.string().nullable(),
     status: z.enum(["upcoming", "live", "completed"]),
+    isHidden: z.coerce.boolean(),
   })
   .refine((v) => (v.tableCount == null) === (v.seatsPerTable == null), {
     message: "Укажите и число столов, и мест за столом (или оставьте оба поля пустыми)",
@@ -97,6 +98,7 @@ export async function createTournamentAction(
     addonChips: formData.get("addonChips") || null,
     description: formData.get("description") || null,
     status: formData.get("status") || "upcoming",
+    isHidden: formData.get("isHidden"),
   });
 
   if (!parsed.success) {
@@ -110,7 +112,7 @@ export async function createTournamentAction(
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
 
-  if (created) {
+  if (created && !created.isHidden) {
     announceNewTournament(created).catch((err) =>
       console.error("[telegram] new-tournament broadcast failed:", err),
     );
@@ -139,6 +141,7 @@ export async function updateTournamentAction(
     addonChips: formData.get("addonChips") || null,
     description: formData.get("description") || null,
     status: formData.get("status") || "upcoming",
+    isHidden: formData.get("isHidden"),
   });
 
   if (!parsed.success) {

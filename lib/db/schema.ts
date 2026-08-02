@@ -19,6 +19,11 @@ export const tournaments = sqliteTable("tournaments", {
   status: text("status", { enum: ["upcoming", "live", "completed"] })
     .notNull()
     .default("upcoming"),
+  // Test tournaments organizers want to try the live-play tools on without
+  // any real player seeing or applying to them — excluded from every public
+  // listing, the homepage teaser, and Telegram broadcasts/bot menus, but
+  // fully visible and playable from the admin dashboard.
+  isHidden: integer("is_hidden", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),

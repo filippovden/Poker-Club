@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { tournaments } from "@/lib/db/schema";
 import { TournamentsClient } from "@/components/tournaments/tournaments-client";
@@ -21,7 +22,7 @@ export const revalidate = 0;
 
 export default async function TournamentsPage() {
   const [fetched, registrationCounts, seatAssignments, results] = await Promise.all([
-    db.select().from(tournaments),
+    db.select().from(tournaments).where(eq(tournaments.isHidden, false)),
     getRegistrationCounts(),
     getSeatAssignments(),
     getTournamentResults(),

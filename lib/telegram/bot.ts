@@ -62,7 +62,7 @@ async function getNextTournament(): Promise<Tournament | null> {
   const [tournament] = await db
     .select()
     .from(tournaments)
-    .where(not(eq(tournaments.status, "completed")))
+    .where(and(not(eq(tournaments.status, "completed")), eq(tournaments.isHidden, false)))
     .orderBy(asc(tournaments.startsAt))
     .limit(1);
   return tournament ?? null;
