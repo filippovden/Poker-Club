@@ -65,6 +65,19 @@ function LiveTournamentBody({
   }
   for (const seats of tables.values()) seats.sort((a, b) => (a.seatNumber ?? 0) - (b.seatNumber ?? 0));
 
+  // Everyone who actually got a stack at some point — rebuy/addon counts
+  // and totalSpent are only ever nonzero for these, so summing over the
+  // full list would just add a bunch of zeros from unseated applicants.
+  const everPlayed = list.filter((r) => r.status === "playing" || r.status === "eliminated");
+  const totalRebuys = everPlayed.reduce((sum, r) => sum + r.rebuyCount, 0);
+  const totalAddons = everPlayed.reduce((sum, r) => sum + r.addonCount, 0);
+  // totalSpent only tracks rebuy/addon money — the original buy-in isn't a
+  // logged "action", so it's added back in here from the player count for
+  // the overall-cash figure.
+  const rebuyAddonMoney = everPlayed.reduce((sum, r) => sum + r.totalSpent, 0);
+  const buyInMoney = tournament.buyIn != null ? everPlayed.length * tournament.buyIn : null;
+  const totalMoney = buyInMoney != null ? buyInMoney + rebuyAddonMoney : null;
+
   async function start() {
     const wasLive = tournament.status === "live";
     setBusy(true);
@@ -161,6 +174,29 @@ function LiveTournamentBody({
           >
             Отмена
           </Button>
+        </div>
+      )}
+
+      {everPlayed.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 rounded-lg border border-[var(--border)] p-3 sm:grid-cols-4">
+          <div>
+            <p className="text-xs text-[var(--muted-foreground)]">Ребаев</p>
+            <p className="font-display text-lg font-medium">{totalRebuys}</p>
+          </div>
+          <div>
+            <p className="text-xs text-[var(--muted-foreground)]">Аддонов</p>
+            <p className="font-display text-lg font-medium">{totalAddons}</p>
+          </div>
+          <div>
+            <p className="text-xs text-[var(--muted-foreground)]">От ребаев/аддонов</p>
+            <p className="font-display text-lg font-medium">{rebuyAddonMoney} ₽</p>
+          </div>
+          <div>
+            <p className="text-xs text-[var(--muted-foreground)]">Общая касса</p>
+            <p className="font-display text-lg font-medium">
+              {totalMoney != null ? `${totalMoney} ₽` : "—"}
+            </p>
+          </div>
         </div>
       )}
 
