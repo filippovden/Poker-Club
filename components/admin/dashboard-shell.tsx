@@ -12,6 +12,8 @@ import { TournamentFormDialog } from "./tournament-form-dialog";
 import { NewsFormDialog } from "./news-form-dialog";
 import { RegistrationsDialog } from "./registrations-dialog";
 import { LiveTournamentDialog } from "./live-tournament-dialog";
+import { StatsPanel } from "./stats-panel";
+import type { TournamentStatsRow, PlayerStatsRow } from "@/lib/db/stats";
 import {
   createTournamentAction,
   updateTournamentAction,
@@ -39,14 +41,18 @@ export function DashboardShell({
   news,
   username,
   statusCounts = {},
+  tournamentStats = [],
+  playerStats = [],
 }: {
   tournaments: Tournament[];
   news: NewsArticle[];
   username: string;
   statusCounts?: Record<number, { pending: number; approved: number; rejected: number }>;
+  tournamentStats?: TournamentStatsRow[];
+  playerStats?: PlayerStatsRow[];
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"tournaments" | "news">("tournaments");
+  const [tab, setTab] = useState<"tournaments" | "news" | "stats">("tournaments");
   const [, startTransition] = useTransition();
 
   const [optimisticTournaments, dispatchTournaments] = useOptimistic(
@@ -241,15 +247,18 @@ export function DashboardShell({
           <TabsList>
             <TabsTrigger value="tournaments">Турниры</TabsTrigger>
             <TabsTrigger value="news">Новости</TabsTrigger>
+            <TabsTrigger value="stats">Статистика</TabsTrigger>
           </TabsList>
-          <Button
-            size="sm"
-            data-testid="add-item-button"
-            onClick={tab === "tournaments" ? openNewTournament : openNewNews}
-          >
-            <Plus className="h-4 w-4" />
-            {tab === "tournaments" ? "Турнир" : "Новость"}
-          </Button>
+          {tab !== "stats" && (
+            <Button
+              size="sm"
+              data-testid="add-item-button"
+              onClick={tab === "tournaments" ? openNewTournament : openNewNews}
+            >
+              <Plus className="h-4 w-4" />
+              {tab === "tournaments" ? "Турнир" : "Новость"}
+            </Button>
+          )}
         </div>
 
         <TabsContent value="tournaments">
@@ -422,6 +431,10 @@ export function DashboardShell({
               ))
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="stats">
+          <StatsPanel tournamentStats={tournamentStats} playerStats={playerStats} />
         </TabsContent>
       </Tabs>
 

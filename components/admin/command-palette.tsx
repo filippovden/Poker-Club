@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Command } from "cmdk";
-import { CalendarPlus, Newspaper, LogOut, LayoutList } from "lucide-react";
+import { CalendarPlus, Newspaper, LogOut, LayoutList, BarChart3 } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 
 export function CommandPalette({
@@ -12,7 +12,7 @@ export function CommandPalette({
 }: {
   onNewTournament: () => void;
   onNewNews: () => void;
-  onTabChange: (tab: "tournaments" | "news") => void;
+  onTabChange: (tab: "tournaments" | "news" | "stats") => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -75,6 +75,12 @@ export function CommandPalette({
             className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-[var(--foreground)] data-[selected=true]:bg-[var(--surface-2)]"
           >
             <Newspaper className="h-4 w-4" /> Перейти к новостям
+          </Command.Item>
+          <Command.Item
+            onSelect={() => run(() => onTabChange("stats"))}
+            className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-[var(--foreground)] data-[selected=true]:bg-[var(--surface-2)]"
+          >
+            <BarChart3 className="h-4 w-4" /> Перейти к статистике
           </Command.Item>
         </Command.Group>
 
