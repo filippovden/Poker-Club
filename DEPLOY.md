@@ -211,16 +211,27 @@ pm2 restart royal63
 
 ## 11. Резервное копирование базы данных
 
-База — это один файл `data.sqlite`. Простой ежедневный бэкап через cron:
+База — это один файл `data.sqlite`. В репозитории есть готовый скрипт
+`deploy/backup-db.sh` — копирует базу в `backups/data-<время>.sqlite` и сам
+удаляет копии старше 30 дней, чтобы диск не забивался бесконечно.
+
+Поставить его на автозапуск каждую ночь в 3:00 (один раз, дальше работает сам):
 
 ```bash
-mkdir -p /opt/backups
-(crontab -l 2>/dev/null; echo "0 3 * * * cp /opt/royal63/data.sqlite /opt/backups/data-\$(date +\%F).sqlite") | crontab -
+chmod +x /opt/royal63/royal63/deploy/backup-db.sh
+(crontab -l 2>/dev/null; echo "0 3 * * * /opt/royal63/royal63/deploy/backup-db.sh >> /opt/royal63/royal63/backups/backup.log 2>&1") | crontab -
 ```
 
-Это будет сохранять копию каждую ночь в 3:00. Изредка стоит скачивать эти
-файлы к себе на компьютер (например через `scp`) — на случай, если сам
-сервер выйдет из строя.
+Проверить, что задача встала:
+
+```bash
+crontab -l
+```
+
+Изредка стоит скачивать файлы из `backups/` к себе на компьютер (например
+через `scp` — `scp root@81.19.136.186:/opt/royal63/royal63/backups/data-*.sqlite .`)
+или в облако — копия на том же сервере не спасёт, если выйдет из строя сам
+сервер или диск.
 
 ## Полезные команды PM2
 

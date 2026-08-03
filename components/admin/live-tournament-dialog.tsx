@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Coins, PlusCircle, Skull, Trophy } from "lucide-react";
+import { Coins, PlusCircle, Shuffle, Skull, Trophy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,10 +10,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  adminEliminatePlayer,
+  adminEliminatePlayers,
   adminFinishTournament,
   adminListRegistrations,
+  adminRebalanceTables,
   adminRebuyOrAddon,
   adminStartTournament,
 } from "@/lib/actions/registrations";
@@ -36,6 +38,10 @@ function LiveTournamentBody({
   const [note, setNote] = useState<string | null>(null);
   const [pendingStackAction, setPendingStackAction] = useState<PendingStackAction | null>(null);
   const [amountInput, setAmountInput] = useState("");
+  // Players about to be marked out together — a real hand can eliminate
+  // more than one player at once, and they should share the same place
+  // rather than get sequential ones just because of click order.
+  const [tieSelection, setTieSelection] = useState<Set<number>>(new Set());
 
   async function refresh() {
     setList(await adminListRegistrations(tournament.id));
@@ -112,20 +118,44 @@ function LiveTournamentBody({
     await refresh();
   }
 
-  async function eliminate(reg: Registration) {
-    if (!confirm(`Выбыл: ${reg.name}?`)) return;
+  function toggleTie(id: number) {
+    setTieSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function eliminate(ids: number[]) {
+    const names = (list ?? [])
+      .filter((r) => ids.includes(r.id))
+      .map((r) => r.name)
+      .join(", ");
+    const question = ids.length > 1 ? `Выбыли одновременно: ${names}?` : `Выбыл: ${names}?`;
+    if (!confirm(question)) return;
     setBusy(true);
-    const result = await adminEliminatePlayer(reg.id);
+    const result = await adminEliminatePlayers(ids);
     setBusy(false);
     if (result.error) {
       setNote(result.error);
     } else {
       setNote(
         result.tournamentFinished
-          ? `${reg.name} выбыл — турнир доигран, остался победитель.`
-          : `${reg.name} выбыл — ${result.place} место.`,
+          ? `${names} — турнир доигран, остался победитель.`
+          : `${names} — ${result.place} место${ids.length > 1 ? " (тай)" : ""}.`,
       );
+      setTieSelection(new Set());
     }
+    await refresh();
+  }
+
+  async function rebalance() {
+    if (!confirm("Пересадить всех играющих по столам заново?")) return;
+    setBusy(true);
+    const result = await adminRebalanceTables(tournament.id);
+    setBusy(false);
+    setNote(result.error ?? `Пересажено на ${result.tableCount} стол(ов).`);
     await refresh();
   }
 
@@ -177,6 +207,29 @@ function LiveTournamentBody({
         </div>
       )}
 
+      {tieSelection.size > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-[var(--danger)]/40 bg-[var(--surface-2)] p-3">
+          <p className="min-w-0 flex-1 truncate text-xs">
+            Отмечено на одновременный вылет ({tieSelection.size}):{" "}
+            {list
+              .filter((r) => tieSelection.has(r.id))
+              .map((r) => r.name)
+              .join(", ")}
+          </p>
+          <Button size="sm" onClick={() => eliminate([...tieSelection])} disabled={busy} className="shrink-0">
+            Подтвердить вылет
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setTieSelection(new Set())}
+            className="shrink-0"
+          >
+            Отмена
+          </Button>
+        </div>
+      )}
+
       {everPlayed.length > 0 && (
         <div className="grid grid-cols-2 gap-3 rounded-lg border border-[var(--border)] p-3 sm:grid-cols-4">
           <div>
@@ -217,9 +270,15 @@ function LiveTournamentBody({
             <p className="text-xs text-[var(--muted-foreground)]">
               В игре: {playing.length} · выбыло: {eliminated.length}
             </p>
-            <Button size="sm" variant="secondary" onClick={finish} disabled={busy}>
-              Завершить турнир
-            </Button>
+            <div className="flex shrink-0 gap-2">
+              <Button size="sm" variant="secondary" onClick={rebalance} disabled={busy || playing.length === 0}>
+                <Shuffle className="h-3.5 w-3.5" />
+                Пересадить столы
+              </Button>
+              <Button size="sm" variant="secondary" onClick={finish} disabled={busy}>
+                Завершить турнир
+              </Button>
+            </div>
           </div>
 
           {seatedApproved.length > 0 && (
@@ -245,15 +304,22 @@ function LiveTournamentBody({
                         key={r.id}
                         className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[var(--surface-2)]"
                       >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">
-                            {r.seatNumber}. {r.name}
-                          </p>
-                          <p className="truncate text-xs text-[var(--muted-foreground)]">
-                            Стек: {r.currentStack ?? "—"}
-                            {r.rebuyCount > 0 && ` · ребаев: ${r.rebuyCount}`}
-                            {r.addonCount > 0 && ` · аддонов: ${r.addonCount}`}
-                          </p>
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <Checkbox
+                            checked={tieSelection.has(r.id)}
+                            onCheckedChange={() => toggleTie(r.id)}
+                            title="Отметить для одновременного вылета (тай)"
+                          />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {r.seatNumber}. {r.name}
+                            </p>
+                            <p className="truncate text-xs text-[var(--muted-foreground)]">
+                              Стек: {r.currentStack ?? "—"}
+                              {r.rebuyCount > 0 && ` · ребаев: ${r.rebuyCount}`}
+                              {r.addonCount > 0 && ` · аддонов: ${r.addonCount}`}
+                            </p>
+                          </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <button
@@ -275,7 +341,7 @@ function LiveTournamentBody({
                             <PlusCircle className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            onClick={() => eliminate(r)}
+                            onClick={() => eliminate([r.id])}
                             disabled={busy}
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
                             aria-label="Выбыл"

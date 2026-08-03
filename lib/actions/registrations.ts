@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
@@ -114,6 +114,30 @@ async function requireAdmin() {
   return session;
 }
 
+// The live-play actions below do a read (e.g. "how many are still playing")
+// followed by writes based on that read — two rapid clicks (a double-click,
+// or two admins acting on the same tournament at once) can interleave
+// between that read and write, since each `await` yields back to the event
+// loop. A single Node process serving this app means a simple in-memory
+// per-tournament lock is enough to serialize them; it wouldn't help across
+// multiple server instances, but this app only ever runs one.
+const busyTournaments = new Set<number>();
+
+async function withTournamentLock<T extends { error?: string }>(
+  tournamentId: number,
+  run: () => Promise<T>,
+): Promise<T> {
+  if (busyTournaments.has(tournamentId)) {
+    return { error: "Другое действие с этим турниром уже выполняется — подождите секунду и повторите" } as T;
+  }
+  busyTournaments.add(tournamentId);
+  try {
+    return await run();
+  } finally {
+    busyTournaments.delete(tournamentId);
+  }
+}
+
 export async function adminListRegistrations(tournamentId: number) {
   await requireAdmin();
   return db
@@ -211,33 +235,35 @@ export async function adminAssignSeats(tournamentId: number): Promise<AssignSeat
 export async function adminStartTournament(tournamentId: number): Promise<ActionResult> {
   await requireAdmin();
 
-  const [tournament] = await db
-    .select()
-    .from(tournaments)
-    .where(eq(tournaments.id, tournamentId))
-    .limit(1);
-  if (!tournament) return { error: "Турнир не найден" };
+  return withTournamentLock<ActionResult>(tournamentId, async () => {
+    const [tournament] = await db
+      .select()
+      .from(tournaments)
+      .where(eq(tournaments.id, tournamentId))
+      .limit(1);
+    if (!tournament) return { error: "Турнир не найден" };
 
-  await db.update(tournaments).set({ status: "live" }).where(eq(tournaments.id, tournamentId));
+    await db.update(tournaments).set({ status: "live" }).where(eq(tournaments.id, tournamentId));
 
-  // Only seated approved players actually start playing — anyone approved
-  // but never seated (shouldn't normally happen) sits out rather than
-  // silently getting a stack with no table.
-  await db
-    .update(registrations)
-    .set({ status: "playing", currentStack: tournament.startingStack ?? null })
-    .where(
-      and(
-        eq(registrations.tournamentId, tournamentId),
-        eq(registrations.status, "approved"),
-        isNotNull(registrations.tableNumber),
-        isNotNull(registrations.seatNumber),
-      ),
-    );
+    // Only seated approved players actually start playing — anyone approved
+    // but never seated (shouldn't normally happen) sits out rather than
+    // silently getting a stack with no table.
+    await db
+      .update(registrations)
+      .set({ status: "playing", currentStack: tournament.startingStack ?? null })
+      .where(
+        and(
+          eq(registrations.tournamentId, tournamentId),
+          eq(registrations.status, "approved"),
+          isNotNull(registrations.tableNumber),
+          isNotNull(registrations.seatNumber),
+        ),
+      );
 
-  revalidatePath("/tournaments");
-  revalidatePath("/admin/dashboard");
-  return { success: true };
+    revalidatePath("/tournaments");
+    revalidatePath("/admin/dashboard");
+    return { success: true };
+  });
 }
 
 export interface StackActionResult {
@@ -258,29 +284,31 @@ export async function adminRebuyOrAddon(
   if (!reg) return { error: "Игрок не найден" };
   if (reg.status !== "playing") return { error: "Игрок сейчас не в игре" };
 
-  const newStack = (reg.currentStack ?? 0) + chips;
-  await db
-    .update(registrations)
-    .set({
-      currentStack: newStack,
-      rebuyCount: type === "rebuy" ? reg.rebuyCount + 1 : reg.rebuyCount,
-      addonCount: type === "addon" ? reg.addonCount + 1 : reg.addonCount,
-      totalSpent: reg.totalSpent + money,
-    })
-    .where(eq(registrations.id, registrationId));
+  return withTournamentLock<StackActionResult>(reg.tournamentId, async () => {
+    const newStack = (reg.currentStack ?? 0) + chips;
+    await db
+      .update(registrations)
+      .set({
+        currentStack: newStack,
+        rebuyCount: type === "rebuy" ? reg.rebuyCount + 1 : reg.rebuyCount,
+        addonCount: type === "addon" ? reg.addonCount + 1 : reg.addonCount,
+        totalSpent: reg.totalSpent + money,
+      })
+      .where(eq(registrations.id, registrationId));
 
-  await db.insert(tournamentActions).values({
-    tournamentId: reg.tournamentId,
-    registrationId,
-    adminUsername: session.username,
-    type,
-    chips,
-    money,
+    await db.insert(tournamentActions).values({
+      tournamentId: reg.tournamentId,
+      registrationId,
+      adminUsername: session.username,
+      type,
+      chips,
+      money,
+    });
+
+    revalidatePath("/tournaments");
+    revalidatePath("/admin/dashboard");
+    return { success: true, newStack };
   });
-
-  revalidatePath("/tournaments");
-  revalidatePath("/admin/dashboard");
-  return { success: true, newStack };
 }
 
 export interface EliminateResult {
@@ -291,60 +319,76 @@ export interface EliminateResult {
 }
 
 // Places are assigned strictly in reverse elimination order — the first
-// player out gets the lowest place (equal to however many were still live
-// including them), each subsequent bust gets one place better. Once only
-// one player remains, they never need their own "eliminate" click — there's
-// no one left to bust them, so they're automatically crowned 1st.
-export async function adminEliminatePlayer(registrationId: number): Promise<EliminateResult> {
+// player(s) out get the lowest place (equal to however many were still live
+// including them), each subsequent bust gets a better place. Passing more
+// than one id handles a simultaneous multi-way bust (e.g. two players
+// all-in against each other in the same hand) — poker convention awards
+// every player in that hand the *better* of the places they'd otherwise
+// span (two players busting out of 5 live are both "tied for 4th", not
+// 4th and 5th separately), so the batch place is live-count minus batch
+// size plus one, computed once for the whole group. Once one player
+// remains, they never need their own "eliminate" click — there's no one
+// left to bust them, so they're automatically crowned 1st.
+export async function adminEliminatePlayers(registrationIds: number[]): Promise<EliminateResult> {
+  const ids = [...new Set(registrationIds)];
+  if (ids.length === 0) return { error: "Не выбрано ни одного игрока" };
   const session = await requireAdmin();
 
-  const [reg] = await db.select().from(registrations).where(eq(registrations.id, registrationId)).limit(1);
-  if (!reg) return { error: "Игрок не найден" };
-  if (reg.status !== "playing") return { error: "Игрок сейчас не в игре" };
-
-  const live = await db
-    .select({ id: registrations.id })
-    .from(registrations)
-    .where(and(eq(registrations.tournamentId, reg.tournamentId), eq(registrations.status, "playing")));
-
-  const place = live.length;
-  const eliminatedAt = new Date().toISOString();
-
-  await db
-    .update(registrations)
-    .set({ status: "eliminated", place, eliminatedAt })
-    .where(eq(registrations.id, registrationId));
-
-  await db.insert(tournamentActions).values({
-    tournamentId: reg.tournamentId,
-    registrationId,
-    adminUsername: session.username,
-    type: "eliminate",
-  });
-
-  // Normally the admin never clicks "eliminate" on the very last player (no
-  // one is left to bust them), so `remaining === 1` is the common finish —
-  // that lone survivor is auto-crowned 1st. But if the last player *is*
-  // eliminated directly (e.g. a manual correction), `remaining === 0` still
-  // means the tournament is over, just with no one left to crown.
-  const remaining = live.length - 1;
-  let tournamentFinished = false;
-  if (remaining <= 1) {
-    if (remaining === 1) {
-      const winner = live.find((r) => r.id !== registrationId);
-      if (winner) {
-        await db
-          .update(registrations)
-          .set({ status: "eliminated", place: 1, eliminatedAt: new Date().toISOString() })
-          .where(eq(registrations.id, winner.id));
-      }
-    }
-    tournamentFinished = true;
+  const regs = await db.select().from(registrations).where(inArray(registrations.id, ids));
+  if (regs.length !== ids.length) return { error: "Некоторые игроки не найдены" };
+  if (regs.some((r) => r.status !== "playing")) return { error: "Не все выбранные игроки сейчас в игре" };
+  const tournamentId = regs[0].tournamentId;
+  if (regs.some((r) => r.tournamentId !== tournamentId)) {
+    return { error: "Нельзя отметить вылет игроков из разных турниров одновременно" };
   }
 
-  revalidatePath("/tournaments");
-  revalidatePath("/admin/dashboard");
-  return { success: true, place, tournamentFinished };
+  return withTournamentLock<EliminateResult>(tournamentId, async () => {
+    const live = await db
+      .select({ id: registrations.id })
+      .from(registrations)
+      .where(and(eq(registrations.tournamentId, tournamentId), eq(registrations.status, "playing")));
+
+    const place = live.length - ids.length + 1;
+    const eliminatedAt = new Date().toISOString();
+
+    await db
+      .update(registrations)
+      .set({ status: "eliminated", place, eliminatedAt })
+      .where(inArray(registrations.id, ids));
+
+    for (const registrationId of ids) {
+      await db.insert(tournamentActions).values({
+        tournamentId,
+        registrationId,
+        adminUsername: session.username,
+        type: "eliminate",
+      });
+    }
+
+    // Normally the admin never clicks "eliminate" on the very last player (no
+    // one is left to bust them), so `remaining === 1` is the common finish —
+    // that lone survivor is auto-crowned 1st. But if the last player(s) *are*
+    // eliminated directly (e.g. a manual correction), `remaining <= 0` still
+    // means the tournament is over, just with no one left to crown.
+    const remaining = live.length - ids.length;
+    let tournamentFinished = false;
+    if (remaining <= 1) {
+      if (remaining === 1) {
+        const winner = live.find((r) => !ids.includes(r.id));
+        if (winner) {
+          await db
+            .update(registrations)
+            .set({ status: "eliminated", place: 1, eliminatedAt: new Date().toISOString() })
+            .where(eq(registrations.id, winner.id));
+        }
+      }
+      tournamentFinished = true;
+    }
+
+    revalidatePath("/tournaments");
+    revalidatePath("/admin/dashboard");
+    return { success: true, place, tournamentFinished };
+  });
 }
 
 export interface FinishTournamentResult {
@@ -359,74 +403,120 @@ export interface FinishTournamentResult {
 export async function adminFinishTournament(tournamentId: number): Promise<FinishTournamentResult> {
   await requireAdmin();
 
-  const stillPlaying = await db
-    .select({ id: registrations.id })
-    .from(registrations)
-    .where(and(eq(registrations.tournamentId, tournamentId), eq(registrations.status, "playing")));
-  if (stillPlaying.length > 0) {
-    return { error: `В турнире ещё ${stillPlaying.length} играющих — сначала доиграйте до конца` };
-  }
-
-  const finished = await db
-    .select()
-    .from(registrations)
-    .where(
-      and(
-        eq(registrations.tournamentId, tournamentId),
-        eq(registrations.status, "eliminated"),
-        isNotNull(registrations.place),
-      ),
-    );
-  if (finished.length === 0) {
-    return { error: "Нет результатов для подсчёта рейтинга" };
-  }
-
-  const playerCount = finished.length;
-  let ratingsUpdated = 0;
-
-  for (const reg of finished) {
-    const phone = normalizePhone(reg.phone);
-    let [player] = await db.select().from(players).where(eq(players.phone, phone)).limit(1);
-    if (!player) {
-      const [created] = await db
-        .insert(players)
-        .values({ phone, name: reg.name, telegramChatId: reg.telegramChatId })
-        .returning();
-      player = created;
+  return withTournamentLock<FinishTournamentResult>(tournamentId, async () => {
+    const stillPlaying = await db
+      .select({ id: registrations.id })
+      .from(registrations)
+      .where(and(eq(registrations.tournamentId, tournamentId), eq(registrations.status, "playing")));
+    if (stillPlaying.length > 0) {
+      return { error: `В турнире ещё ${stillPlaying.length} играющих — сначала доиграйте до конца` };
     }
 
-    const { pointsEarned, newRating } = computeRatingChange(player.rating, reg.place!, playerCount);
+    const finished = await db
+      .select()
+      .from(registrations)
+      .where(
+        and(
+          eq(registrations.tournamentId, tournamentId),
+          eq(registrations.status, "eliminated"),
+          isNotNull(registrations.place),
+        ),
+      );
+    if (finished.length === 0) {
+      return { error: "Нет результатов для подсчёта рейтинга" };
+    }
 
-    await db.insert(ratingHistory).values({
-      playerId: player.id,
-      tournamentId,
-      oldRating: player.rating,
-      newRating,
-      place: reg.place!,
-      pointsEarned,
-    });
+    const playerCount = finished.length;
+    let ratingsUpdated = 0;
 
-    await db
-      .update(players)
-      .set({
-        rating: newRating,
-        tournamentsPlayed: player.tournamentsPlayed + 1,
-        name: reg.name,
-        telegramChatId: reg.telegramChatId ?? player.telegramChatId,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(players.id, player.id));
+    for (const reg of finished) {
+      const phone = normalizePhone(reg.phone);
+      let [player] = await db.select().from(players).where(eq(players.phone, phone)).limit(1);
+      if (!player) {
+        const [created] = await db
+          .insert(players)
+          .values({ phone, name: reg.name, telegramChatId: reg.telegramChatId })
+          .returning();
+        player = created;
+      }
 
-    await db.update(registrations).set({ playerId: player.id }).where(eq(registrations.id, reg.id));
-    ratingsUpdated++;
+      const { pointsEarned, newRating } = computeRatingChange(player.rating, reg.place!, playerCount);
+
+      await db.insert(ratingHistory).values({
+        playerId: player.id,
+        tournamentId,
+        oldRating: player.rating,
+        newRating,
+        place: reg.place!,
+        pointsEarned,
+      });
+
+      await db
+        .update(players)
+        .set({
+          rating: newRating,
+          tournamentsPlayed: player.tournamentsPlayed + 1,
+          name: reg.name,
+          telegramChatId: reg.telegramChatId ?? player.telegramChatId,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(players.id, player.id));
+
+      await db.update(registrations).set({ playerId: player.id }).where(eq(registrations.id, reg.id));
+      ratingsUpdated++;
+    }
+
+    await db.update(tournaments).set({ status: "completed" }).where(eq(tournaments.id, tournamentId));
+
+    revalidatePath("/tournaments");
+    revalidatePath("/admin/dashboard");
+    revalidatePath("/rating");
+    return { success: true, ratingsUpdated };
+  });
+}
+
+export interface RebalanceResult {
+  error?: string;
+  success?: boolean;
+  tableCount?: number;
+}
+
+// Consolidates every currently-playing player onto fewer tables as the
+// field shrinks (e.g. 45 players on 5 tables of 9 drops to 31 and running
+// 5 half-empty tables no longer makes sense). Unlike initial seating —
+// which never moves an already-seated player — this is an explicit admin
+// action that's meant to move everyone, the same way a live tournament
+// "breaks" a table and randomly reseats its players elsewhere.
+export async function adminRebalanceTables(tournamentId: number): Promise<RebalanceResult> {
+  await requireAdmin();
+
+  const [tournament] = await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1);
+  if (!tournament?.tableCount || !tournament?.seatsPerTable) {
+    return { error: "Для этого турнира не настроена рассадка по столам" };
   }
+  const { tableCount, seatsPerTable } = tournament;
 
-  await db.update(tournaments).set({ status: "completed" }).where(eq(tournaments.id, tournamentId));
+  return withTournamentLock<RebalanceResult>(tournamentId, async () => {
+    const playing = await db
+      .select()
+      .from(registrations)
+      .where(and(eq(registrations.tournamentId, tournamentId), eq(registrations.status, "playing")));
 
-  revalidatePath("/tournaments");
-  revalidatePath("/admin/dashboard");
-  revalidatePath("/rating");
-  return { success: true, ratingsUpdated };
+    if (playing.length === 0) return { error: "Сейчас никто не играет" };
+
+    const targetTableCount = Math.max(1, Math.min(tableCount, Math.ceil(playing.length / seatsPerTable)));
+    const shuffled = shuffle(playing);
+    const emptyOccupied: Set<number>[] = Array.from({ length: targetTableCount }, () => new Set<number>());
+    const plan = planBalancedSeats(shuffled.length, targetTableCount, seatsPerTable, emptyOccupied);
+
+    for (const [i, reg] of shuffled.entries()) {
+      await db.update(registrations).set(plan[i]).where(eq(registrations.id, reg.id));
+    }
+
+    revalidatePath("/tournaments");
+    revalidatePath("/admin/dashboard");
+    return { success: true, tableCount: targetTableCount };
+  });
 }
 
 export async function adminSetSeat(

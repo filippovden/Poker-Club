@@ -11,6 +11,10 @@
 # database (regenerated automatically on first run)
 data.sqlite
 
+# local DB backups produced by scripts/backup-db.sh — these belong on the
+# server's disk (or wherever the cron job is pointed), never in git
+/backups/
+
 # env files
 .env*
 !.env.example
