@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { LayoutGrid, CalendarDays, Search } from "lucide-react";
 import { TournamentCard } from "@/components/tournament-card";
+import { Button } from "@/components/ui/button";
 import { RevealGroup, RevealItem } from "@/components/reveal";
 import { CalendarView } from "./calendar-view";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,7 @@ import type { Tournament } from "@/lib/db/schema";
 import type { SeatAssignment } from "@/lib/db/seat-assignments";
 import type { TournamentResultRow } from "@/lib/db/tournament-results";
 
+const PAGE_SIZE = 12;
 const FORMATS = ["NLH", "PLO", "MTT"] as const;
 const STATUSES = [
   { value: "upcoming", label: "Предстоящие" },
@@ -39,6 +41,18 @@ export function TournamentsClient({
       return true;
     });
   }, [tournaments, format, status]);
+
+  // Reset how many are shown whenever the filters actually change — a
+  // growing tournament history means `filtered` can get long, so the list
+  // is paginated rather than rendered all at once.
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [filterKey, setFilterKey] = useState(`${format}:${status}`);
+  const currentFilterKey = `${format}:${status}`;
+  if (currentFilterKey !== filterKey) {
+    setFilterKey(currentFilterKey);
+    setVisibleCount(PAGE_SIZE);
+  }
+  const visible = filtered.slice(0, visibleCount);
 
   return (
     <div>
@@ -120,18 +134,27 @@ export function TournamentsClient({
           </p>
         </div>
       ) : view === "list" ? (
-        <RevealGroup className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((t) => (
-            <RevealItem key={t.id}>
-              <TournamentCard
-                tournament={t}
-                registeredCount={registrationCounts[t.id]}
-                occupiedSeats={seatAssignments[t.id]}
-                results={results[t.id]}
-              />
-            </RevealItem>
-          ))}
-        </RevealGroup>
+        <>
+          <RevealGroup className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {visible.map((t) => (
+              <RevealItem key={t.id}>
+                <TournamentCard
+                  tournament={t}
+                  registeredCount={registrationCounts[t.id]}
+                  occupiedSeats={seatAssignments[t.id]}
+                  results={results[t.id]}
+                />
+              </RevealItem>
+            ))}
+          </RevealGroup>
+          {visibleCount < filtered.length && (
+            <div className="mt-8 flex justify-center">
+              <Button variant="outline" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
+                Показать ещё
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
         <CalendarView
           tournaments={filtered}

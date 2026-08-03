@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Armchair, Check, Shuffle, Trash2, X } from "lucide-react";
+import { Armchair, Check, CheckCheck, Pencil, Shuffle, Trash2, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,12 +11,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
+  adminApproveAllPending,
   adminAssignSeats,
   adminListRegistrations,
   adminRemoveRegistration,
   adminSetPlace,
   adminSetRegistrationStatus,
   adminSetSeat,
+  adminUpdateRegistrationContact,
 } from "@/lib/actions/registrations";
 import type { Registration } from "@/lib/db/schema";
 
@@ -51,10 +53,45 @@ function RegistrationsList({
   const [seating, setSeating] = useState(false);
   const [seatingNote, setSeatingNote] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [approvingAll, setApprovingAll] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
 
   useEffect(() => {
     adminListRegistrations(tournamentId).then(setList);
   }, [tournamentId]);
+
+  async function approveAll() {
+    setApprovingAll(true);
+    setStatusError(null);
+    const result = await adminApproveAllPending(tournamentId);
+    setApprovingAll(false);
+    setStatusError(
+      result.failed > 0
+        ? `Одобрено: ${result.approved}. Не поместилось (нет мест): ${result.failed}.`
+        : null,
+    );
+    const fresh = await adminListRegistrations(tournamentId);
+    setList(fresh);
+  }
+
+  function startEdit(r: Registration) {
+    setEditingId(r.id);
+    setEditName(r.name);
+    setEditPhone(r.phone);
+  }
+
+  async function saveEdit(id: number) {
+    const result = await adminUpdateRegistrationContact(id, editName, editPhone);
+    if (result.error) {
+      setStatusError(result.error);
+      return;
+    }
+    setEditingId(null);
+    const fresh = await adminListRegistrations(tournamentId);
+    setList(fresh);
+  }
 
   async function remove(id: number) {
     await adminRemoveRegistration(id);
@@ -105,12 +142,29 @@ function RegistrationsList({
     );
   }
 
+  const pendingCount = list?.filter((r) => r.status === "pending").length ?? 0;
+
   return (
     <div className="flex flex-col gap-3">
       {statusError && (
         <p className="rounded-lg bg-[var(--danger)]/10 px-3 py-2 text-xs text-[var(--danger)]">
           {statusError}
         </p>
+      )}
+      {pendingCount > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] p-3">
+          <p className="text-xs text-[var(--muted-foreground)]">На рассмотрении: {pendingCount}</p>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={approveAll}
+            disabled={approvingAll}
+            className="shrink-0"
+          >
+            <CheckCheck className="h-3.5 w-3.5" />
+            {approvingAll ? "Одобряем…" : "Одобрить все"}
+          </Button>
+        </div>
       )}
       {hasTables && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] p-3">
@@ -141,14 +195,41 @@ function RegistrationsList({
             return (
               <div
                 key={r.id}
-                className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 hover:bg-[var(--surface-2)]"
+                className="flex flex-col gap-2 rounded-lg px-3 py-2.5 hover:bg-[var(--surface-2)] sm:flex-row sm:items-center sm:justify-between sm:gap-3"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{r.name}</p>
-                  <p className="truncate text-xs text-[var(--muted-foreground)]">
-                    {r.phone}
-                    {r.email ? ` · ${r.email}` : ""} · {formatDate(r.createdAt)}
-                  </p>
+                  {editingId === r.id ? (
+                    <div className="flex flex-col gap-1.5 pr-2">
+                      <input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="Имя"
+                        className="h-8 rounded-lg border border-[var(--border)] bg-transparent px-2 text-sm"
+                      />
+                      <input
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        placeholder="Телефон"
+                        className="h-8 rounded-lg border border-[var(--border)] bg-transparent px-2 text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => saveEdit(r.id)}>
+                          Сохранить
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => setEditingId(null)}>
+                          Отмена
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="truncate text-sm font-medium">{r.name}</p>
+                      <p className="truncate text-xs text-[var(--muted-foreground)]">
+                        {r.phone}
+                        {r.email ? ` · ${r.email}` : ""} · {formatDate(r.createdAt)}
+                      </p>
+                    </>
+                  )}
                   {r.comment && (
                     <p className="truncate text-xs italic text-[var(--muted-foreground)]">
                       💬 {r.comment}
@@ -171,59 +252,71 @@ function RegistrationsList({
                     )}
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  {(r.status === "approved" || r.status === "eliminated") && (
-                    <input
-                      type="number"
-                      min={1}
-                      placeholder="Место"
-                      defaultValue={r.place ?? ""}
-                      onBlur={(e) => setPlace(r.id, e.target.value)}
-                      title="Итоговое место в турнире"
-                      className="h-8 w-16 rounded-lg border border-[var(--border)] bg-transparent px-2 text-xs"
-                    />
-                  )}
-                  {r.status === "approved" && hasTables && r.tableNumber != null && (
-                    <button
-                      onClick={() => unseat(r.id)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
-                      aria-label="Снять с места"
-                      title="Снять с места"
-                    >
-                      <Armchair className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  {(r.status === "pending" || r.status === "rejected") && (
-                    <button
-                      onClick={() => setStatus(r.id, "approved")}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--live)]/10 hover:text-[var(--live)]"
-                      aria-label="Одобрить заявку"
-                      title="Одобрить заявку"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  {(r.status === "pending" || r.status === "approved") && (
-                    <button
-                      onClick={() => setStatus(r.id, "rejected")}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
-                      aria-label="Отклонить заявку"
-                      title="Отклонить заявку"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  {r.status !== "playing" && (
-                    <button
-                      onClick={() => remove(r.id)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
-                      aria-label="Удалить заявку"
-                      title="Удалить заявку"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
+                {editingId !== r.id && (
+                  <div className="flex shrink-0 flex-wrap items-center gap-1 self-end sm:self-auto">
+                    {(r.status === "approved" || r.status === "eliminated") && (
+                      <input
+                        type="number"
+                        min={1}
+                        placeholder="Место"
+                        defaultValue={r.place ?? ""}
+                        onBlur={(e) => setPlace(r.id, e.target.value)}
+                        title="Итоговое место в турнире"
+                        className="h-8 w-16 rounded-lg border border-[var(--border)] bg-transparent px-2 text-xs"
+                      />
+                    )}
+                    {r.status === "approved" && hasTables && r.tableNumber != null && (
+                      <button
+                        onClick={() => unseat(r.id)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                        aria-label="Снять с места"
+                        title="Снять с места"
+                      >
+                        <Armchair className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {r.status !== "playing" && (
+                      <button
+                        onClick={() => startEdit(r)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                        aria-label="Изменить имя/телефон"
+                        title="Изменить имя/телефон"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {(r.status === "pending" || r.status === "rejected") && (
+                      <button
+                        onClick={() => setStatus(r.id, "approved")}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--live)]/10 hover:text-[var(--live)]"
+                        aria-label="Одобрить заявку"
+                        title="Одобрить заявку"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {(r.status === "pending" || r.status === "approved") && (
+                      <button
+                        onClick={() => setStatus(r.id, "rejected")}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                        aria-label="Отклонить заявку"
+                        title="Отклонить заявку"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {r.status !== "playing" && (
+                      <button
+                        onClick={() => remove(r.id)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                        aria-label="Удалить заявку"
+                        title="Удалить заявку"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

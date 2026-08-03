@@ -152,6 +152,13 @@ export function RegistrationDialog({
                     {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                   </button>
                 </div>
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  Потеряли ссылку? Статус можно посмотреть на странице{" "}
+                  <Link href="/registration/status" className="underline hover:text-[var(--foreground)]">
+                    «Проверить заявку»
+                  </Link>{" "}
+                  по имени и телефону.
+                </p>
               </div>
             )}
             <Button onClick={() => handleClose(false)} className="mt-2">

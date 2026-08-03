@@ -299,7 +299,7 @@ export function DashboardShell({
               optimisticTournaments.map((t) => (
                 <div
                   key={t.id}
-                  className="flex items-center justify-between gap-4 border-b border-[var(--border)] px-5 py-3.5 last:border-0 hover:bg-[var(--surface-2)]/50"
+                  className="flex flex-col gap-3 border-b border-[var(--border)] px-5 py-3.5 last:border-0 hover:bg-[var(--surface-2)]/50 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <Badge variant={t.status === "live" ? "live" : "outline"} className="shrink-0">
@@ -329,7 +329,7 @@ export function DashboardShell({
                       </p>
                     </div>
                   </div>
-                  <div className="flex shrink-0 gap-1">
+                  <div className="flex shrink-0 gap-1 self-end sm:self-auto">
                     <button
                       onClick={() => {
                         setRegistrationsTournamentId(t.id);

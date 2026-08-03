@@ -1,10 +1,18 @@
 "use server";
 
-import { and, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
-import { players, ratingHistory, registrations, tournamentActions, tournaments } from "@/lib/db/schema";
+import {
+  players,
+  ratingHistory,
+  registrations,
+  tournamentActions,
+  tournaments,
+  type Registration,
+  type Tournament,
+} from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
 import { tournamentRegistrationDeepLink } from "@/lib/telegram/client";
 import { setRegistrationStatus } from "@/lib/registrations/set-status";
@@ -108,6 +116,51 @@ export async function cancelRegistrationAction(token: string) {
   return { success: true, tournamentId: registration.tournamentId };
 }
 
+export interface LookupResultItem {
+  registration: Registration;
+  tournament: Tournament;
+}
+
+export interface LookupResult {
+  error?: string;
+  items?: LookupResultItem[];
+}
+
+// Self-service status lookup for anyone who applied without ever linking
+// Telegram (or lost the one-off cancel link) — phone + name is not a real
+// secret (either could be guessed), so this is a convenience lookup, not
+// an account login; nothing here is more sensitive than what the person
+// already handed over at registration time.
+export async function lookupRegistrationsAction(phone: string, name: string): Promise<LookupResult> {
+  const normalizedPhone = normalizePhone(phone);
+  const normalizedName = name.trim().toLowerCase();
+  if (normalizedPhone.length < 10 || !normalizedName) {
+    return { error: "Введите телефон и имя, указанные при регистрации" };
+  }
+
+  const rows = await db
+    .select()
+    .from(registrations)
+    .innerJoin(tournaments, eq(registrations.tournamentId, tournaments.id))
+    .where(eq(tournaments.isHidden, false));
+
+  const matches = rows.filter(
+    (r) =>
+      normalizePhone(r.registrations.phone) === normalizedPhone &&
+      r.registrations.name.trim().toLowerCase() === normalizedName,
+  );
+
+  if (matches.length === 0) {
+    return { error: "Заявки не найдены — проверьте телефон и имя (как указывали при регистрации)" };
+  }
+
+  return {
+    items: matches
+      .map((r) => ({ registration: r.registrations, tournament: r.tournaments }))
+      .sort((a, b) => new Date(b.tournament.startsAt).getTime() - new Date(a.tournament.startsAt).getTime()),
+  };
+}
+
 async function requireAdmin() {
   const session = await getSession();
   if (!session) throw new Error("Требуется авторизация");
@@ -147,11 +200,112 @@ export async function adminListRegistrations(tournamentId: number) {
     .orderBy(registrations.createdAt);
 }
 
+export interface ParticipantSearchRow {
+  id: number;
+  name: string;
+  phone: string;
+  status: string;
+  tournamentId: number;
+  tournamentTitle: string;
+  createdAt: string;
+}
+
+// The bot already has a phone/name search, but only inside the admin
+// Telegram chat — this is the same lookup for the web dashboard, so
+// finding "has this person ever applied" doesn't require opening every
+// tournament's "Заявки" dialog one at a time.
+export async function adminSearchParticipants(query: string): Promise<ParticipantSearchRow[]> {
+  await requireAdmin();
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const digitsQ = normalizePhone(query);
+
+  const rows = await db
+    .select({
+      id: registrations.id,
+      name: registrations.name,
+      phone: registrations.phone,
+      status: registrations.status,
+      createdAt: registrations.createdAt,
+      tournamentId: tournaments.id,
+      tournamentTitle: tournaments.title,
+    })
+    .from(registrations)
+    .innerJoin(tournaments, eq(registrations.tournamentId, tournaments.id))
+    .orderBy(desc(registrations.createdAt));
+
+  return rows.filter(
+    (r) =>
+      r.name.toLowerCase().includes(q) ||
+      r.phone.toLowerCase().includes(q) ||
+      (digitsQ.length >= 4 && normalizePhone(r.phone).includes(digitsQ)),
+  );
+}
+
+export interface TournamentActionRow {
+  id: number;
+  playerName: string;
+  adminUsername: string | null;
+  type: string;
+  chips: number | null;
+  money: number | null;
+  createdAt: string;
+}
+
+// The rebuy/addon/eliminate audit log (tournament_actions) was write-only —
+// logged on every action but nowhere to actually read it back. This is the
+// read side, for the "История действий" list in the live tournament view.
+export async function adminListTournamentActions(tournamentId: number): Promise<TournamentActionRow[]> {
+  await requireAdmin();
+  const rows = await db
+    .select({
+      id: tournamentActions.id,
+      playerName: registrations.name,
+      adminUsername: tournamentActions.adminUsername,
+      type: tournamentActions.type,
+      chips: tournamentActions.chips,
+      money: tournamentActions.money,
+      createdAt: tournamentActions.createdAt,
+    })
+    .from(tournamentActions)
+    .innerJoin(registrations, eq(tournamentActions.registrationId, registrations.id))
+    .where(eq(tournamentActions.tournamentId, tournamentId))
+    .orderBy(desc(tournamentActions.createdAt));
+  return rows;
+}
+
 export async function adminRemoveRegistration(id: number) {
   await requireAdmin();
   await db.delete(registrations).where(eq(registrations.id, id));
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
+}
+
+export interface UpdateContactResult {
+  error?: string;
+  success?: boolean;
+}
+
+// Fixes a typo'd name/phone without deleting and recreating the whole
+// application (which would lose its seat, status, and history).
+export async function adminUpdateRegistrationContact(
+  id: number,
+  name: string,
+  phone: string,
+): Promise<UpdateContactResult> {
+  await requireAdmin();
+  const trimmedName = name.trim();
+  const trimmedPhone = phone.trim();
+  if (trimmedName.length < 2) return { error: "Введите имя" };
+  if (trimmedPhone.length < 5) return { error: "Введите номер телефона" };
+
+  await db
+    .update(registrations)
+    .set({ name: trimmedName, phone: trimmedPhone })
+    .where(eq(registrations.id, id));
+  revalidatePath("/tournaments");
+  revalidatePath("/admin/dashboard");
+  return { success: true };
 }
 
 export async function adminSetRegistrationStatus(
@@ -163,6 +317,37 @@ export async function adminSetRegistrationStatus(
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
   return result;
+}
+
+export interface BulkApproveResult {
+  approved: number;
+  failed: number;
+}
+
+// Approves every still-pending application one at a time (reusing the same
+// per-registration capacity check and Telegram notify as a single approve)
+// rather than in parallel — sequential calls mean the capacity check on
+// registration N sees registration N-1's approval already counted, so a
+// tournament with fewer open seats than pending applicants stops exactly
+// at the cap instead of overbooking.
+export async function adminApproveAllPending(tournamentId: number): Promise<BulkApproveResult> {
+  await requireAdmin();
+  const pending = await db
+    .select({ id: registrations.id })
+    .from(registrations)
+    .where(and(eq(registrations.tournamentId, tournamentId), eq(registrations.status, "pending")));
+
+  let approved = 0;
+  let failed = 0;
+  for (const r of pending) {
+    const result = await setRegistrationStatus(r.id, "approved");
+    if (result.error) failed++;
+    else approved++;
+  }
+
+  revalidatePath("/tournaments");
+  revalidatePath("/admin/dashboard");
+  return { approved, failed };
 }
 
 export interface AssignSeatsResult {
@@ -400,6 +585,70 @@ export interface FinishTournamentResult {
 // Rating is only computed once every seat has a final place — a tournament
 // that's still 3-handed doesn't have enough information to score anyone
 // fairly yet.
+// Shared by adminFinishTournament and adminRecalculateRating — reads every
+// eliminated+placed registration for the tournament, scores each against
+// the field, and records/applies it. Assumes any previous rating effect
+// this tournament had has already been undone by the caller.
+async function applyRatingForTournament(
+  tournamentId: number,
+): Promise<{ error?: string; ratingsUpdated?: number }> {
+  const finished = await db
+    .select()
+    .from(registrations)
+    .where(
+      and(
+        eq(registrations.tournamentId, tournamentId),
+        eq(registrations.status, "eliminated"),
+        isNotNull(registrations.place),
+      ),
+    );
+  if (finished.length === 0) {
+    return { error: "Нет результатов для подсчёта рейтинга" };
+  }
+
+  const playerCount = finished.length;
+  let ratingsUpdated = 0;
+
+  for (const reg of finished) {
+    const phone = normalizePhone(reg.phone);
+    let [player] = await db.select().from(players).where(eq(players.phone, phone)).limit(1);
+    if (!player) {
+      const [created] = await db
+        .insert(players)
+        .values({ phone, name: reg.name, telegramChatId: reg.telegramChatId })
+        .returning();
+      player = created;
+    }
+
+    const { pointsEarned, newRating } = computeRatingChange(player.rating, reg.place!, playerCount);
+
+    await db.insert(ratingHistory).values({
+      playerId: player.id,
+      tournamentId,
+      oldRating: player.rating,
+      newRating,
+      place: reg.place!,
+      pointsEarned,
+    });
+
+    await db
+      .update(players)
+      .set({
+        rating: newRating,
+        tournamentsPlayed: player.tournamentsPlayed + 1,
+        name: reg.name,
+        telegramChatId: reg.telegramChatId ?? player.telegramChatId,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(players.id, player.id));
+
+    await db.update(registrations).set({ playerId: player.id }).where(eq(registrations.id, reg.id));
+    ratingsUpdated++;
+  }
+
+  return { ratingsUpdated };
+}
+
 export async function adminFinishTournament(tournamentId: number): Promise<FinishTournamentResult> {
   await requireAdmin();
 
@@ -412,66 +661,84 @@ export async function adminFinishTournament(tournamentId: number): Promise<Finis
       return { error: `В турнире ещё ${stillPlaying.length} играющих — сначала доиграйте до конца` };
     }
 
-    const finished = await db
-      .select()
-      .from(registrations)
-      .where(
-        and(
-          eq(registrations.tournamentId, tournamentId),
-          eq(registrations.status, "eliminated"),
-          isNotNull(registrations.place),
-        ),
-      );
-    if (finished.length === 0) {
-      return { error: "Нет результатов для подсчёта рейтинга" };
-    }
-
-    const playerCount = finished.length;
-    let ratingsUpdated = 0;
-
-    for (const reg of finished) {
-      const phone = normalizePhone(reg.phone);
-      let [player] = await db.select().from(players).where(eq(players.phone, phone)).limit(1);
-      if (!player) {
-        const [created] = await db
-          .insert(players)
-          .values({ phone, name: reg.name, telegramChatId: reg.telegramChatId })
-          .returning();
-        player = created;
-      }
-
-      const { pointsEarned, newRating } = computeRatingChange(player.rating, reg.place!, playerCount);
-
-      await db.insert(ratingHistory).values({
-        playerId: player.id,
-        tournamentId,
-        oldRating: player.rating,
-        newRating,
-        place: reg.place!,
-        pointsEarned,
-      });
-
-      await db
-        .update(players)
-        .set({
-          rating: newRating,
-          tournamentsPlayed: player.tournamentsPlayed + 1,
-          name: reg.name,
-          telegramChatId: reg.telegramChatId ?? player.telegramChatId,
-          updatedAt: new Date().toISOString(),
-        })
-        .where(eq(players.id, player.id));
-
-      await db.update(registrations).set({ playerId: player.id }).where(eq(registrations.id, reg.id));
-      ratingsUpdated++;
-    }
+    const result = await applyRatingForTournament(tournamentId);
+    if (result.error) return result;
 
     await db.update(tournaments).set({ status: "completed" }).where(eq(tournaments.id, tournamentId));
 
     revalidatePath("/tournaments");
     revalidatePath("/admin/dashboard");
     revalidatePath("/rating");
-    return { success: true, ratingsUpdated };
+    return { success: true, ratingsUpdated: result.ratingsUpdated };
+  });
+}
+
+export interface RecalculateRatingResult {
+  error?: string;
+  success?: boolean;
+  ratingsUpdated?: number;
+}
+
+// An admin can already hand-correct a wrong `place` on a completed
+// tournament's eliminated rows (in the Заявки dialog) — what was missing
+// was a way to then recompute the rating this tournament already applied,
+// using the corrected places. Only safe when this was the *last*
+// tournament finished for every affected player: if a later tournament
+// already built its own rating change on top of this one, undoing this
+// one first would invalidate that later math too, so it refuses instead
+// of silently corrupting it.
+export async function adminRecalculateRating(tournamentId: number): Promise<RecalculateRatingResult> {
+  await requireAdmin();
+
+  const [tournament] = await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1);
+  if (!tournament) return { error: "Турнир не найден" };
+  if (tournament.status !== "completed") return { error: "Турнир ещё не завершён" };
+
+  return withTournamentLock<RecalculateRatingResult>(tournamentId, async () => {
+    const previousHistory = await db
+      .select()
+      .from(ratingHistory)
+      .where(eq(ratingHistory.tournamentId, tournamentId));
+    if (previousHistory.length === 0) {
+      return { error: "Для этого турнира ещё не считался рейтинг" };
+    }
+
+    for (const entry of previousHistory) {
+      const [laterEntry] = await db
+        .select({ id: ratingHistory.id })
+        .from(ratingHistory)
+        .where(and(eq(ratingHistory.playerId, entry.playerId), gt(ratingHistory.id, entry.id)))
+        .limit(1);
+      if (laterEntry) {
+        const [player] = await db
+          .select({ name: players.name })
+          .from(players)
+          .where(eq(players.id, entry.playerId))
+          .limit(1);
+        return {
+          error: `Нельзя пересчитать — у игрока «${player?.name ?? "#" + entry.playerId}» уже есть более поздний турнир с посчитанным рейтингом`,
+        };
+      }
+    }
+
+    for (const entry of previousHistory) {
+      const [player] = await db.select().from(players).where(eq(players.id, entry.playerId)).limit(1);
+      if (player) {
+        await db
+          .update(players)
+          .set({ rating: entry.oldRating, tournamentsPlayed: Math.max(0, player.tournamentsPlayed - 1) })
+          .where(eq(players.id, player.id));
+      }
+      await db.delete(ratingHistory).where(eq(ratingHistory.id, entry.id));
+    }
+
+    const result = await applyRatingForTournament(tournamentId);
+    if (result.error) return result;
+
+    revalidatePath("/tournaments");
+    revalidatePath("/admin/dashboard");
+    revalidatePath("/rating");
+    return { success: true, ratingsUpdated: result.ratingsUpdated };
   });
 }
 

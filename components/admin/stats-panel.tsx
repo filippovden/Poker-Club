@@ -1,8 +1,19 @@
 "use client";
 
-import { Download } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { Download, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { adminSearchParticipants, type ParticipantSearchRow } from "@/lib/actions/registrations";
 import type { TournamentStatsRow, PlayerStatsRow } from "@/lib/db/stats";
+
+const SEARCH_STATUS_LABELS: Record<string, string> = {
+  pending: "Ожидает",
+  approved: "Одобрена",
+  rejected: "Отклонена",
+  playing: "В игре",
+  eliminated: "Выбыл",
+};
 
 function formatDate(iso: string) {
   const date = new Date(iso);
@@ -80,8 +91,62 @@ export function StatsPanel({
     );
   }
 
+  const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<ParticipantSearchRow[] | null>(null);
+
+  async function runSearch(e: FormEvent) {
+    e.preventDefault();
+    setSearching(true);
+    const results = await adminSearchParticipants(query);
+    setSearching(false);
+    setSearchResults(results);
+  }
+
   return (
     <div className="flex flex-col gap-10">
+      <section>
+        <h2 className="mb-4 font-display text-sm font-medium">Поиск участника</h2>
+        <form onSubmit={runSearch} className="flex items-center gap-2">
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Имя или телефон"
+            className="max-w-xs"
+          />
+          <Button type="submit" size="sm" disabled={searching || !query.trim()}>
+            <Search className="h-3.5 w-3.5" />
+            {searching ? "Ищем…" : "Найти"}
+          </Button>
+        </form>
+        {searchResults !== null && (
+          <div className="mt-4">
+            {searchResults.length === 0 ? (
+              <p className="text-sm text-[var(--muted-foreground)]">Ничего не найдено.</p>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+                {searchResults.map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex items-center justify-between gap-4 border-b border-[var(--border)] px-4 py-3 last:border-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{r.name}</p>
+                      <p className="truncate text-xs text-[var(--muted-foreground)]">
+                        {r.phone} · {r.tournamentTitle}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-xs text-[var(--muted-foreground)]">
+                      {SEARCH_STATUS_LABELS[r.status] ?? r.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
       <section>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-sm font-medium">По турнирам</h2>

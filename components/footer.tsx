@@ -44,6 +44,9 @@ export function Footer() {
           <Link href="/rating" className="hover:text-[var(--foreground)]">
             Рейтинг
           </Link>
+          <Link href="/registration/status" className="hover:text-[var(--foreground)]">
+            Проверить заявку
+          </Link>
           <Link href="/news" className="hover:text-[var(--foreground)]">
             Новости
           </Link>

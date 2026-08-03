@@ -9,6 +9,8 @@ const STATUS_LABELS: Record<string, string> = {
   pending: "Заявка на рассмотрении",
   approved: "Заявка одобрена",
   rejected: "Заявка отклонена",
+  playing: "Вы в игре",
+  eliminated: "Турнир завершён для вас",
 };
 
 function formatDate(iso: string) {
@@ -80,13 +82,26 @@ export function CancelRegistrationView({
       <p className="mt-3 text-sm font-medium text-[var(--accent)]">
         {STATUS_LABELS[registration.status] ?? registration.status}
       </p>
+      {(registration.status === "approved" || registration.status === "playing") &&
+        registration.tableNumber != null && (
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+            Стол {registration.tableNumber}, место {registration.seatNumber}
+          </p>
+        )}
+      {registration.status === "eliminated" && registration.place != null && (
+        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+          Итоговое место: {registration.place}
+        </p>
+      )}
 
-      <div className="mt-8 flex flex-col gap-3">
-        <Button variant="secondary" disabled={pending} onClick={handleCancel}>
-          {pending ? "Отзываем…" : "Отозвать заявку"}
-        </Button>
-        {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
-      </div>
+      {(registration.status === "pending" || registration.status === "approved") && (
+        <div className="mt-8 flex flex-col gap-3">
+          <Button variant="secondary" disabled={pending} onClick={handleCancel}>
+            {pending ? "Отзываем…" : "Отозвать заявку"}
+          </Button>
+          {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+        </div>
+      )}
     </>
   );
 }

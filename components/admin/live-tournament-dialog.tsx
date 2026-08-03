@@ -15,11 +15,33 @@ import {
   adminEliminatePlayers,
   adminFinishTournament,
   adminListRegistrations,
+  adminListTournamentActions,
   adminRebalanceTables,
   adminRebuyOrAddon,
+  adminRecalculateRating,
   adminStartTournament,
+  type TournamentActionRow,
 } from "@/lib/actions/registrations";
 import type { Registration, Tournament } from "@/lib/db/schema";
+
+const ACTION_LABELS: Record<string, string> = {
+  rebuy: "Ребай",
+  addon: "Аддон",
+  eliminate: "Выбыл",
+  manual_seat_change: "Пересадка",
+};
+
+function formatActionTime(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString("ru-RU", {
+    timeZone: "Europe/Samara",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 interface PendingStackAction {
   reg: Registration;
@@ -34,6 +56,7 @@ function LiveTournamentBody({
   onChanged: () => void;
 }) {
   const [list, setList] = useState<Registration[] | null>(null);
+  const [actions, setActions] = useState<TournamentActionRow[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [pendingStackAction, setPendingStackAction] = useState<PendingStackAction | null>(null);
@@ -45,11 +68,18 @@ function LiveTournamentBody({
 
   async function refresh() {
     setList(await adminListRegistrations(tournament.id));
+    // Once the action log has been opened once, keep it in sync with every
+    // other refresh too, so it doesn't go stale while left open.
+    if (actions !== null) setActions(await adminListTournamentActions(tournament.id));
   }
 
   useEffect(() => {
     adminListRegistrations(tournament.id).then(setList);
   }, [tournament.id]);
+
+  function loadActions() {
+    if (actions === null) adminListTournamentActions(tournament.id).then(setActions);
+  }
 
   if (list === null) {
     return <p className="py-6 text-center text-sm text-[var(--muted-foreground)]">Загрузка…</p>;
@@ -168,6 +198,17 @@ function LiveTournamentBody({
     onChanged();
   }
 
+  async function recalculateRating() {
+    if (!confirm("Пересчитать рейтинг по текущим местам? Используйте после исправления места вручную.")) {
+      return;
+    }
+    setBusy(true);
+    const result = await adminRecalculateRating(tournament.id);
+    setBusy(false);
+    setNote(result.error ?? `Рейтинг пересчитан для ${result.ratingsUpdated} игроков.`);
+    await refresh();
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {note && (
@@ -266,11 +307,11 @@ function LiveTournamentBody({
 
       {tournament.status === "live" && (
         <>
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] p-3">
+          <div className="flex flex-col gap-3 rounded-lg border border-[var(--border)] p-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-[var(--muted-foreground)]">
               В игре: {playing.length} · выбыло: {eliminated.length}
             </p>
-            <div className="flex shrink-0 gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="secondary" onClick={rebalance} disabled={busy || playing.length === 0}>
                 <Shuffle className="h-3.5 w-3.5" />
                 Пересадить столы
@@ -366,9 +407,21 @@ function LiveTournamentBody({
 
       {eliminated.length > 0 && (
         <div className="rounded-lg border border-[var(--border)] p-3">
-          <p className="mb-2 flex items-center gap-1.5 text-xs font-medium">
-            <Trophy className="h-3.5 w-3.5 text-[var(--accent)]" /> Результаты
-          </p>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="flex items-center gap-1.5 text-xs font-medium">
+              <Trophy className="h-3.5 w-3.5 text-[var(--accent)]" /> Результаты
+            </p>
+            {tournament.status === "completed" && (
+              <button
+                onClick={recalculateRating}
+                disabled={busy}
+                className="text-xs text-[var(--muted-foreground)] underline hover:text-[var(--foreground)]"
+                title="Используйте после исправления места вручную в «Заявки»"
+              >
+                Пересчитать рейтинг
+              </button>
+            )}
+          </div>
           <div className="flex flex-col gap-1">
             {eliminated.map((r) => (
               <p key={r.id} className="text-xs text-[var(--muted-foreground)]">
@@ -389,6 +442,30 @@ function LiveTournamentBody({
         <p className="py-4 text-center text-sm text-[var(--muted-foreground)]">
           Турнир завершён без записанных результатов live-игры.
         </p>
+      )}
+
+      {everPlayed.length > 0 && (
+        <details className="rounded-lg border border-[var(--border)] p-3" onToggle={loadActions}>
+          <summary className="cursor-pointer text-xs font-medium text-[var(--muted-foreground)]">
+            История действий
+          </summary>
+          <div className="mt-3 flex flex-col gap-1">
+            {actions === null ? (
+              <p className="text-xs text-[var(--muted-foreground)]">Загрузка…</p>
+            ) : actions.length === 0 ? (
+              <p className="text-xs text-[var(--muted-foreground)]">Пока пусто.</p>
+            ) : (
+              actions.map((a) => (
+                <p key={a.id} className="text-xs text-[var(--muted-foreground)]">
+                  {formatActionTime(a.createdAt)} · {ACTION_LABELS[a.type] ?? a.type} · {a.playerName}
+                  {a.chips != null && ` · ${a.chips} фишек`}
+                  {a.money != null && ` · ${a.money} ₽`}
+                  {a.adminUsername && ` · ${a.adminUsername}`}
+                </p>
+              ))
+            )}
+          </div>
+        </details>
       )}
     </div>
   );

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { desc } from "drizzle-orm";
-import { Reveal, RevealGroup, RevealItem } from "@/components/reveal";
+import { Reveal } from "@/components/reveal";
 import { Badge } from "@/components/ui/badge";
+import { RatingListClient } from "@/components/rating/rating-list-client";
 import { db } from "@/lib/db/client";
 import { players } from "@/lib/db/schema";
 import { SITE_CONTENT } from "@/lib/content";
@@ -42,28 +43,7 @@ export default async function RatingPage() {
             Рейтинг пока пуст — станет доступен после первого завершённого турнира.
           </p>
         ) : (
-          <RevealGroup className="overflow-hidden rounded-xl border border-[var(--border)]">
-            {ranked.map((p, i) => (
-              <RevealItem key={p.id}>
-                <div className="flex items-center justify-between gap-4 border-b border-[var(--border)] px-5 py-4 last:border-0">
-                  <div className="flex items-center gap-4">
-                    <span className="w-6 shrink-0 text-sm font-semibold text-[var(--muted-foreground)]">
-                      {i + 1}
-                    </span>
-                    <div>
-                      <p className="font-medium">{p.name}</p>
-                      <p className="text-xs text-[var(--muted-foreground)]">
-                        Турниров: {p.tournamentsPlayed}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-display text-lg font-medium text-[var(--accent)]">
-                    {Math.round(p.rating)}
-                  </span>
-                </div>
-              </RevealItem>
-            ))}
-          </RevealGroup>
+          <RatingListClient players={ranked} />
         )}
       </section>
     </div>
