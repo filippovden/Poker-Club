@@ -815,6 +815,19 @@ export async function adminSetSeat(
 ) {
   await requireAdmin();
   await db.update(registrations).set({ tableNumber, seatNumber }).where(eq(registrations.id, id));
+
+  if (tableNumber != null && seatNumber != null) {
+    const [reg] = await db.select().from(registrations).where(eq(registrations.id, id)).limit(1);
+    if (reg?.telegramChatId) {
+      const [tournament] = await db.select().from(tournaments).where(eq(tournaments.id, reg.tournamentId)).limit(1);
+      if (tournament) {
+        sendTelegramMessage(reg.telegramChatId, buildSeatAssignedMessage(tournament, tableNumber, seatNumber)).catch(
+          (err) => console.error("[telegram] manual seat notify failed:", err),
+        );
+      }
+    }
+  }
+
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
 }

@@ -118,6 +118,16 @@ function RegistrationsList({
     );
   }
 
+  async function setSeatManually(id: number, tableValue: string, seatValue: string) {
+    const table = tableValue.trim() === "" ? null : Number(tableValue);
+    const seat = seatValue.trim() === "" ? null : Number(seatValue);
+    if ((table != null && !Number.isFinite(table)) || (seat != null && !Number.isFinite(seat))) return;
+    await adminSetSeat(id, table, seat);
+    setList((prev) =>
+      prev?.map((r) => (r.id === id ? { ...r, tableNumber: table, seatNumber: seat } : r)) ?? null,
+    );
+  }
+
   async function assignSeats() {
     setSeating(true);
     setSeatingNote(null);
@@ -265,6 +275,42 @@ function RegistrationsList({
                         title="Итоговое место в турнире"
                         className="h-8 w-16 rounded-lg border border-[var(--border)] bg-transparent px-2 text-xs"
                       />
+                    )}
+                    {hasTables && (r.status === "approved" || r.status === "playing") && (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={1}
+                          placeholder="Стол"
+                          defaultValue={r.tableNumber ?? ""}
+                          data-seat-field="table"
+                          onBlur={(e) => {
+                            const seatInput =
+                              e.currentTarget.parentElement?.querySelector<HTMLInputElement>(
+                                '[data-seat-field="seat"]',
+                              );
+                            setSeatManually(r.id, e.target.value, seatInput?.value ?? "");
+                          }}
+                          title="Стол (вручную)"
+                          className="h-8 w-12 rounded-lg border border-[var(--border)] bg-transparent px-1.5 text-xs"
+                        />
+                        <input
+                          type="number"
+                          min={1}
+                          placeholder="Место"
+                          defaultValue={r.seatNumber ?? ""}
+                          data-seat-field="seat"
+                          onBlur={(e) => {
+                            const tableInput =
+                              e.currentTarget.parentElement?.querySelector<HTMLInputElement>(
+                                '[data-seat-field="table"]',
+                              );
+                            setSeatManually(r.id, tableInput?.value ?? "", e.target.value);
+                          }}
+                          title="Место (вручную)"
+                          className="h-8 w-12 rounded-lg border border-[var(--border)] bg-transparent px-1.5 text-xs"
+                        />
+                      </div>
                     )}
                     {r.status === "approved" && hasTables && r.tableNumber != null && (
                       <button
