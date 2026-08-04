@@ -14,7 +14,8 @@ import {
   type Tournament,
 } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
-import { tournamentRegistrationDeepLink } from "@/lib/telegram/client";
+import { sendTelegramMessage, tournamentRegistrationDeepLink } from "@/lib/telegram/client";
+import { buildSeatAssignedMessage } from "@/lib/telegram/messages";
 import { setRegistrationStatus } from "@/lib/registrations/set-status";
 import { createRegistration } from "@/lib/registrations/create";
 import { planBalancedSeats, shuffle } from "@/lib/tournaments/seating";
@@ -400,6 +401,14 @@ export async function adminAssignSeats(tournamentId: number): Promise<AssignSeat
 
   for (const [i, reg] of toSeat.entries()) {
     await db.update(registrations).set(plan[i]).where(eq(registrations.id, reg.id));
+    // Only the newly-seated get pinged — re-running this after new
+    // approvals shouldn't re-notify everyone who was already seated.
+    if (reg.telegramChatId) {
+      sendTelegramMessage(
+        reg.telegramChatId,
+        buildSeatAssignedMessage(tournament, plan[i].tableNumber, plan[i].seatNumber),
+      ).catch((err) => console.error("[telegram] seat notify failed:", err));
+    }
   }
   for (const reg of overflow) {
     if (reg.tableNumber != null || reg.seatNumber != null) {

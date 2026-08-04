@@ -65,6 +65,20 @@ export function buildApprovedMessage(tournament: TournamentInfo) {
   );
 }
 
+export function buildSeatAssignedMessage(
+  tournament: TournamentInfo,
+  tableNumber: number,
+  seatNumber: number,
+) {
+  return (
+    `🪑 <b>Ваше место готово!</b>\n\n` +
+    `🃏 ${escapeHtml(tournament.title)}\n` +
+    `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}\n\n` +
+    `Стол <b>${tableNumber}</b>, место <b>${seatNumber}</b>.\n` +
+    `${venueLine()}`
+  );
+}
+
 export function buildRejectedMessage(tournament: TournamentInfo) {
   return (
     `❌ К сожалению, заявку на «${escapeHtml(tournament.title)}» отклонили.\n` +

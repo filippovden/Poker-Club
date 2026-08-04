@@ -169,7 +169,8 @@ function RegistrationsList({
       {hasTables && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] p-3">
           <div className="min-w-0 text-xs text-[var(--muted-foreground)]">
-            {seatingNote ?? "Случайно распределяет одобренные заявки по столам."}
+            {seatingNote ??
+              "Случайно распределяет одобренные заявки по столам и пишет каждому в Telegram, если бот подключён."}
           </div>
           <Button
             size="sm"
