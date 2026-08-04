@@ -59,6 +59,8 @@ function TournamentFormFields({
   );
   const [useTables, setUseTables] = useState(source?.tableCount != null);
   const [isHidden, setIsHidden] = useState(source?.isHidden ?? false);
+  const [repeatWeekly, setRepeatWeekly] = useState(false);
+  const [repeatWeeks, setRepeatWeeks] = useState(3);
 
   return (
     <form
@@ -66,6 +68,7 @@ function TournamentFormFields({
         formData.set("format", format);
         formData.set("status", status);
         formData.set("isHidden", isHidden ? "on" : "");
+        formData.set("repeatWeeks", repeatWeekly ? String(repeatWeeks) : "0");
         onSubmit(formData);
       }}
       className="flex flex-col gap-4"
@@ -79,6 +82,32 @@ function TournamentFormFields({
         <Checkbox checked={isHidden} onCheckedChange={(v) => setIsHidden(v === true)} />
         Скрытый тестовый турнир (не отображается на сайте и не рассылается в боте)
       </label>
+
+      {!tournament && (
+        <div className="flex flex-col gap-3 rounded-lg border border-[var(--border)] p-3">
+          <label className="flex items-center gap-2.5 text-sm font-medium">
+            <Checkbox checked={repeatWeekly} onCheckedChange={(v) => setRepeatWeekly(v === true)} />
+            Повторять еженедельно
+          </label>
+          {repeatWeekly && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="repeatWeeksInput">Ещё сколько недель подряд создать</Label>
+              <Input
+                id="repeatWeeksInput"
+                type="number"
+                min={1}
+                max={26}
+                value={repeatWeeks}
+                onChange={(e) => setRepeatWeeks(Number(e.target.value) || 1)}
+              />
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Создаст ещё {repeatWeeks} копий этого турнира, каждую на неделю позже предыдущей.
+                Каждую копию потом можно менять отдельно.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-2">

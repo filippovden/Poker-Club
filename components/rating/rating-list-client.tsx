@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,10 @@ export function RatingListClient({ players }: { players: Player[] }) {
               const i = players.indexOf(p);
               return (
                 <RevealItem key={p.id}>
-                  <div className="flex items-center justify-between gap-4 border-b border-[var(--border)] px-5 py-4 last:border-0">
+                  <Link
+                    href={`/rating/${p.id}`}
+                    className="flex items-center justify-between gap-4 border-b border-[var(--border)] px-5 py-4 last:border-0 hover:bg-[var(--surface-2)]"
+                  >
                     <div className="flex items-center gap-4">
                       <span className="w-6 shrink-0 text-sm font-semibold text-[var(--muted-foreground)]">
                         {i + 1}
@@ -62,7 +66,7 @@ export function RatingListClient({ players }: { players: Player[] }) {
                     <span className="font-display text-lg font-medium text-[var(--accent)]">
                       {Math.round(p.rating)}
                     </span>
-                  </div>
+                  </Link>
                 </RevealItem>
               );
             })}

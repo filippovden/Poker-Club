@@ -1,6 +1,6 @@
-import { and, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "./client";
-import { players, registrations, tournaments } from "./schema";
+import { players, ratingHistory, registrations, tournaments } from "./schema";
 
 export interface TournamentStatsRow {
   tournamentId: number;
@@ -127,4 +127,64 @@ export async function getPlayerStats(): Promise<PlayerStatsRow[]> {
   }
 
   return [...byPlayer.values()].sort((a, b) => b.rating - a.rating);
+}
+
+export interface PlayerProfileHistoryRow {
+  tournamentId: number;
+  tournamentTitle: string;
+  startsAt: string;
+  place: number;
+  pointsEarned: number;
+  newRating: number;
+}
+
+export interface PlayerProfile {
+  id: number;
+  name: string;
+  rating: number;
+  tournamentsPlayed: number;
+  rank: number | null;
+  bestPlace: number | null;
+  history: PlayerProfileHistoryRow[];
+}
+
+// Public profile behind each name on /rating — the list itself only ever
+// showed name + a single rating number, with no way to see how someone
+// actually got there.
+export async function getPlayerProfile(playerId: number): Promise<PlayerProfile | null> {
+  const [player] = await db.select().from(players).where(eq(players.id, playerId)).limit(1);
+  if (!player) return null;
+
+  // Rank = 1-based position in the full rating-sorted list, not just "how
+  // many players exist" — ties aren't split further, so two players tied
+  // at the top both show rank 1 rather than one arbitrarily beating the
+  // other.
+  const ranked = await db.select({ id: players.id }).from(players).orderBy(desc(players.rating));
+  const rankIndex = ranked.findIndex((p) => p.id === playerId);
+
+  const historyRows = await db
+    .select({
+      tournamentId: tournaments.id,
+      tournamentTitle: tournaments.title,
+      startsAt: tournaments.startsAt,
+      place: ratingHistory.place,
+      pointsEarned: ratingHistory.pointsEarned,
+      newRating: ratingHistory.newRating,
+    })
+    .from(ratingHistory)
+    .innerJoin(tournaments, eq(ratingHistory.tournamentId, tournaments.id))
+    .where(eq(ratingHistory.playerId, playerId))
+    .orderBy(desc(tournaments.startsAt));
+
+  const bestPlace = historyRows.length > 0 ? Math.min(...historyRows.map((h) => h.place)) : null;
+
+  return {
+    id: player.id,
+    name: player.name,
+    rating: player.rating,
+    tournamentsPlayed: player.tournamentsPlayed,
+    rank: rankIndex >= 0 ? rankIndex + 1 : null,
+    bestPlace,
+    history: historyRows,
+  };
 }

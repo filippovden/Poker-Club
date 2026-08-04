@@ -42,7 +42,13 @@ function withComputedCapacity<T extends { tableCount: number | null; seatsPerTab
 export interface ActionResult {
   error?: string;
   success?: boolean;
+  createdCount?: number;
 }
+
+// Bounds how many extra weekly copies a single "повторять еженедельно"
+// submission can spawn — high enough for a season's worth of a weekly
+// game, low enough that a stray click can't flood the schedule.
+const MAX_REPEAT_WEEKS = 26;
 
 // If a tournament's table layout shrinks (or is removed), any existing
 // seat assignments that no longer fit the new grid would otherwise sit
@@ -105,10 +111,12 @@ export async function createTournamentAction(
     return { error: parsed.error.issues[0]?.message || "Некорректные данные" };
   }
 
-  const [created] = await db
-    .insert(tournaments)
-    .values(withComputedCapacity({ ...parsed.data, startsAt: samaraWallClockToUtcIso(parsed.data.startsAt) }))
-    .returning();
+  const baseValues = withComputedCapacity({
+    ...parsed.data,
+    startsAt: samaraWallClockToUtcIso(parsed.data.startsAt),
+  });
+
+  const [created] = await db.insert(tournaments).values(baseValues).returning();
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
 
@@ -118,7 +126,31 @@ export async function createTournamentAction(
     );
   }
 
-  return { success: true };
+  // "Повторять еженедельно" — same tournament, same weekday/time, N more
+  // weeks out. Each copy is a fully independent row from the start (own
+  // status/registrations), editable individually afterward. These don't
+  // get their own broadcast — announcing the same weekly game 3-4 times
+  // back to back the moment an admin sets up a month in advance would just
+  // be spam; the original announcement above already covers it.
+  const repeatWeeks = Math.min(
+    MAX_REPEAT_WEEKS,
+    Math.max(0, Number(formData.get("repeatWeeks")) || 0),
+  );
+  let createdCount = 1;
+  const baseStartsAt = new Date(baseValues.startsAt).getTime();
+  for (let week = 1; week <= repeatWeeks; week++) {
+    await db.insert(tournaments).values({
+      ...baseValues,
+      startsAt: new Date(baseStartsAt + week * 7 * 24 * 3_600_000).toISOString(),
+    });
+    createdCount++;
+  }
+  if (repeatWeeks > 0) {
+    revalidatePath("/tournaments");
+    revalidatePath("/admin/dashboard");
+  }
+
+  return { success: true, createdCount };
 }
 
 export async function updateTournamentAction(

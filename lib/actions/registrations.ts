@@ -661,6 +661,9 @@ async function applyRatingForTournament(
 export async function adminFinishTournament(tournamentId: number): Promise<FinishTournamentResult> {
   await requireAdmin();
 
+  const [tournament] = await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1);
+  if (!tournament) return { error: "Турнир не найден" };
+
   return withTournamentLock<FinishTournamentResult>(tournamentId, async () => {
     const stillPlaying = await db
       .select({ id: registrations.id })
@@ -668,6 +671,16 @@ export async function adminFinishTournament(tournamentId: number): Promise<Finis
       .where(and(eq(registrations.tournamentId, tournamentId), eq(registrations.status, "playing")));
     if (stillPlaying.length > 0) {
       return { error: `В турнире ещё ${stillPlaying.length} играющих — сначала доиграйте до конца` };
+    }
+
+    // Test tournaments (is_hidden) are for trying out the live-play tools —
+    // they must never touch the real players/rating tables, or fake test
+    // names would show up in the public rating.
+    if (tournament.isHidden) {
+      await db.update(tournaments).set({ status: "completed" }).where(eq(tournaments.id, tournamentId));
+      revalidatePath("/tournaments");
+      revalidatePath("/admin/dashboard");
+      return { success: true, ratingsUpdated: 0 };
     }
 
     const result = await applyRatingForTournament(tournamentId);
