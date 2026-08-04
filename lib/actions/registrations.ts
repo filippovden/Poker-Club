@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { and, desc, eq, gt, inArray, isNotNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -304,6 +305,59 @@ export async function adminUpdateRegistrationContact(
     .update(registrations)
     .set({ name: trimmedName, phone: trimmedPhone })
     .where(eq(registrations.id, id));
+  revalidatePath("/tournaments");
+  revalidatePath("/admin/dashboard");
+  return { success: true };
+}
+
+export interface AddWalkInResult {
+  error?: string;
+  success?: boolean;
+}
+
+// Adds someone straight in as approved — a walk-in who never applied
+// through the site/bot, or a quick manual entry when the admin just wants
+// to seat a real body at a real table right now. Table/seat are optional;
+// if both are given, refuses to double-book a seat someone's already in.
+export async function adminAddWalkIn(
+  tournamentId: number,
+  name: string,
+  phone: string,
+  tableNumber: number | null,
+  seatNumber: number | null,
+): Promise<AddWalkInResult> {
+  await requireAdmin();
+  const trimmedName = name.trim();
+  const trimmedPhone = phone.trim();
+  if (trimmedName.length < 2) return { error: "Введите имя" };
+  if (trimmedPhone.length < 5) return { error: "Введите номер телефона" };
+
+  if (tableNumber != null && seatNumber != null) {
+    const [clash] = await db
+      .select({ id: registrations.id })
+      .from(registrations)
+      .where(
+        and(
+          eq(registrations.tournamentId, tournamentId),
+          eq(registrations.tableNumber, tableNumber),
+          eq(registrations.seatNumber, seatNumber),
+          inArray(registrations.status, ["approved", "playing"]),
+        ),
+      )
+      .limit(1);
+    if (clash) return { error: `Стол ${tableNumber}, место ${seatNumber} уже занято` };
+  }
+
+  await db.insert(registrations).values({
+    tournamentId,
+    name: trimmedName,
+    phone: trimmedPhone,
+    cancelToken: randomUUID(),
+    status: "approved",
+    tableNumber,
+    seatNumber,
+  });
+
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
   return { success: true };

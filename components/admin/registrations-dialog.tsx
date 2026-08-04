@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Armchair, Check, CheckCheck, Pencil, Shuffle, Trash2, X } from "lucide-react";
+import { Armchair, Check, CheckCheck, Pencil, Plus, Shuffle, Trash2, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
+  adminAddWalkIn,
   adminApproveAllPending,
   adminAssignSeats,
   adminListRegistrations,
@@ -57,10 +58,41 @@ function RegistrationsList({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [addName, setAddName] = useState("");
+  const [addPhone, setAddPhone] = useState("");
+  const [addTable, setAddTable] = useState("");
+  const [addSeat, setAddSeat] = useState("");
+  const [addBusy, setAddBusy] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   useEffect(() => {
     adminListRegistrations(tournamentId).then(setList);
   }, [tournamentId]);
+
+  async function addWalkIn() {
+    setAddBusy(true);
+    setAddError(null);
+    const result = await adminAddWalkIn(
+      tournamentId,
+      addName,
+      addPhone,
+      addTable.trim() === "" ? null : Number(addTable),
+      addSeat.trim() === "" ? null : Number(addSeat),
+    );
+    setAddBusy(false);
+    if (result.error) {
+      setAddError(result.error);
+      return;
+    }
+    setAddName("");
+    setAddPhone("");
+    setAddTable("");
+    setAddSeat("");
+    setAddOpen(false);
+    const fresh = await adminListRegistrations(tournamentId);
+    setList(fresh);
+  }
 
   async function approveAll() {
     setApprovingAll(true);
@@ -161,6 +193,61 @@ function RegistrationsList({
           {statusError}
         </p>
       )}
+
+      {addOpen ? (
+        <div className="flex flex-col gap-2 rounded-lg border border-[var(--accent)]/40 bg-[var(--surface-2)] p-3">
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              value={addName}
+              onChange={(e) => setAddName(e.target.value)}
+              placeholder="Имя"
+              autoFocus
+              className="h-8 rounded-lg border border-[var(--border)] bg-transparent px-2 text-sm"
+            />
+            <input
+              value={addPhone}
+              onChange={(e) => setAddPhone(e.target.value)}
+              placeholder="Телефон"
+              className="h-8 rounded-lg border border-[var(--border)] bg-transparent px-2 text-sm"
+            />
+          </div>
+          {hasTables && (
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={addTable}
+                onChange={(e) => setAddTable(e.target.value)}
+                type="number"
+                min={1}
+                placeholder="Стол (необязательно)"
+                className="h-8 rounded-lg border border-[var(--border)] bg-transparent px-2 text-xs"
+              />
+              <input
+                value={addSeat}
+                onChange={(e) => setAddSeat(e.target.value)}
+                type="number"
+                min={1}
+                placeholder="Место (необязательно)"
+                className="h-8 rounded-lg border border-[var(--border)] bg-transparent px-2 text-xs"
+              />
+            </div>
+          )}
+          {addError && <p className="text-xs text-[var(--danger)]">{addError}</p>}
+          <div className="flex gap-2">
+            <Button size="sm" onClick={addWalkIn} disabled={addBusy}>
+              {addBusy ? "Добавляем…" : "Добавить"}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setAddOpen(false)}>
+              Отмена
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button size="sm" variant="secondary" onClick={() => setAddOpen(true)} className="self-start">
+          <Plus className="h-3.5 w-3.5" />
+          Добавить участника вручную
+        </Button>
+      )}
+
       {pendingCount > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] p-3">
           <p className="text-xs text-[var(--muted-foreground)]">На рассмотрении: {pendingCount}</p>
