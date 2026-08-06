@@ -538,6 +538,7 @@ export async function adminRebuyOrAddon(
   type: "rebuy" | "addon",
   chips: number,
   money: number,
+  paymentMethod?: "cash" | "transfer" | "qr" | "terminal" | null,
 ): Promise<StackActionResult> {
   const session = await requireAdmin();
 
@@ -554,6 +555,10 @@ export async function adminRebuyOrAddon(
         rebuyCount: type === "rebuy" ? reg.rebuyCount + 1 : reg.rebuyCount,
         addonCount: type === "addon" ? reg.addonCount + 1 : reg.addonCount,
         totalSpent: reg.totalSpent + money,
+        // Каждый ребай/аддон может быть оплачен иначе, чем сам бай-ин —
+        // фиксируем последний способ оплаты прямо в момент внесения денег,
+        // чтобы «Итог за вечер» не требовал отдельного похода в «Заявки».
+        ...(paymentMethod !== undefined ? { paymentMethod } : {}),
       })
       .where(eq(registrations.id, registrationId));
 

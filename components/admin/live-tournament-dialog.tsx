@@ -144,6 +144,7 @@ function LiveTournamentBody({
   const [note, setNote] = useState<string | null>(null);
   const [pendingStackAction, setPendingStackAction] = useState<PendingStackAction | null>(null);
   const [amountInput, setAmountInput] = useState("");
+  const [paymentInput, setPaymentInput] = useState<"" | "cash" | "transfer" | "qr" | "terminal">("");
   // Players about to be marked out together — a real hand can eliminate
   // more than one player at once, and they should share the same place
   // rather than get sequential ones just because of click order.
@@ -225,6 +226,7 @@ function LiveTournamentBody({
     setNote(null);
     setPendingStackAction({ reg, type });
     setAmountInput(tournament.buyIn != null ? String(tournament.buyIn) : "");
+    setPaymentInput((reg.paymentMethod as typeof paymentInput) ?? "");
   }
 
   async function confirmStackAction() {
@@ -237,7 +239,7 @@ function LiveTournamentBody({
     const { reg, type } = pendingStackAction;
     const chips = type === "rebuy" ? (tournament.rebuyChips ?? 0) : (tournament.addonChips ?? 0);
     setBusy(true);
-    const result = await adminRebuyOrAddon(reg.id, type, chips, money);
+    const result = await adminRebuyOrAddon(reg.id, type, chips, money, paymentInput || null);
     setBusy(false);
     setPendingStackAction(null);
     setNote(result.error ?? null);
@@ -315,7 +317,7 @@ function LiveTournamentBody({
       )}
 
       {pendingStackAction && (
-        <div className="flex items-center gap-2 rounded-lg border border-[var(--accent)]/40 bg-[var(--surface-2)] p-3">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--accent)]/40 bg-[var(--surface-2)] p-3">
           <p className="min-w-0 flex-1 truncate text-xs">
             {pendingStackAction.type === "rebuy" ? "Ребай" : "Аддон"}: {pendingStackAction.reg.name} — сумма, ₽
           </p>
@@ -331,6 +333,18 @@ function LiveTournamentBody({
             }}
             className="h-8 w-24 shrink-0 rounded-lg border border-[var(--border)] bg-transparent px-2 text-xs"
           />
+          <select
+            value={paymentInput}
+            onChange={(e) => setPaymentInput(e.target.value as typeof paymentInput)}
+            title="Способ оплаты"
+            className="h-8 shrink-0 rounded-lg border border-[var(--border)] bg-transparent px-1.5 text-xs"
+          >
+            <option value="">Оплата?</option>
+            <option value="cash">Наличные</option>
+            <option value="transfer">Перевод</option>
+            <option value="qr">QR-оплата</option>
+            <option value="terminal">Терминал</option>
+          </select>
           <Button size="sm" onClick={confirmStackAction} disabled={busy} className="shrink-0">
             OK
           </Button>
