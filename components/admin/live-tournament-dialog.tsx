@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Coins, PlusCircle, Shuffle, Skull, Trophy } from "lucide-react";
+import { CheckSquare, Coins, LayoutGrid, List, PlusCircle, Shuffle, Skull, Square, Trophy, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,89 @@ const ACTION_LABELS: Record<string, string> = {
   eliminate: "Выбыл",
   manual_seat_change: "Пересадка",
 };
+
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: "Наличные",
+  transfer: "Перевод",
+  qr: "QR-оплата",
+  terminal: "Терминал",
+  unset: "Не указано",
+};
+
+// Positions seat `index` (0-based) evenly around an ellipse, starting at
+// the top and going clockwise — the same layout convention as a real
+// table's seat numbering, so seat 1 always reads as "closest to 12
+// o'clock" no matter how many seats the table has.
+function seatPosition(index: number, total: number) {
+  const angle = (-90 + (360 / total) * index) * (Math.PI / 180);
+  const rx = 44;
+  const ry = 40;
+  return {
+    left: `${50 + rx * Math.cos(angle)}%`,
+    top: `${50 + ry * Math.sin(angle)}%`,
+  };
+}
+
+function TableSeatChart({
+  tableNumber,
+  seatsPerTable,
+  seats,
+  tieSelection,
+  selectedId,
+  onSelect,
+}: {
+  tableNumber: number;
+  seatsPerTable: number;
+  seats: Registration[];
+  tieSelection: Set<number>;
+  selectedId: number | null;
+  onSelect: (reg: Registration) => void;
+}) {
+  const bySeat = new Map(seats.filter((r) => r.seatNumber != null).map((r) => [r.seatNumber as number, r]));
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <p className="text-xs font-medium text-[var(--accent)]">Стол {tableNumber}</p>
+      <div className="relative aspect-[2/1] w-full max-w-xs">
+        <div className="absolute inset-[14%] rounded-[50%] border-2 border-[var(--accent)]/25 bg-[var(--surface-2)]" />
+        {Array.from({ length: seatsPerTable }, (_, i) => i + 1).map((seatNumber) => {
+          const reg = bySeat.get(seatNumber);
+          const pos = seatPosition(seatNumber - 1, seatsPerTable);
+          const isTie = reg ? tieSelection.has(reg.id) : false;
+          const isSelected = reg ? reg.id === selectedId : false;
+          return (
+            <button
+              key={seatNumber}
+              type="button"
+              disabled={!reg}
+              onClick={() => reg && onSelect(reg)}
+              style={{ left: pos.left, top: pos.top }}
+              className={`absolute flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border px-1 text-center text-[9px] leading-tight transition ${
+                reg
+                  ? isSelected
+                    ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)]"
+                    : isTie
+                      ? "border-[var(--danger)] bg-[var(--danger)]/10 text-[var(--danger)]"
+                      : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]"
+                  : "border-dashed border-[var(--border)]/50 text-[var(--muted-foreground)]/40"
+              }`}
+              title={reg ? `${reg.name} — стек ${reg.currentStack ?? "—"}` : `Место ${seatNumber} свободно`}
+            >
+              {reg ? (
+                <>
+                  <span className="max-w-[42px] truncate font-medium">{reg.name.split(" ")[0]}</span>
+                  <span className="opacity-70">{reg.currentStack ?? "—"}</span>
+                </>
+              ) : (
+                <span>{seatNumber}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function formatActionTime(iso: string) {
   const date = new Date(iso);
@@ -65,6 +148,8 @@ function LiveTournamentBody({
   // more than one player at once, and they should share the same place
   // rather than get sequential ones just because of click order.
   const [tieSelection, setTieSelection] = useState<Set<number>>(new Set());
+  const [viewMode, setViewMode] = useState<"tables" | "list">("tables");
+  const [selectedRegId, setSelectedRegId] = useState<number | null>(null);
 
   async function refresh() {
     setList(await adminListRegistrations(tournament.id));
@@ -113,6 +198,17 @@ function LiveTournamentBody({
   const rebuyAddonMoney = everPlayed.reduce((sum, r) => sum + r.totalSpent, 0);
   const buyInMoney = tournament.buyIn != null ? everPlayed.length * tournament.buyIn : null;
   const totalMoney = buyInMoney != null ? buyInMoney + rebuyAddonMoney : null;
+
+  // Итог за вечер по способу оплаты — каждый игрок платит буй-ин плюс всё,
+  // что потратил на ребаи/аддоны, одним способом (выбирается в «Заявках»);
+  // "unset" копит тех, для кого способ ещё не отмечен.
+  const paymentTotals = new Map<string, number>();
+  for (const r of everPlayed) {
+    const key = r.paymentMethod ?? "unset";
+    const spent = (tournament.buyIn ?? 0) + r.totalSpent;
+    paymentTotals.set(key, (paymentTotals.get(key) ?? 0) + spent);
+  }
+  const selectedReg = selectedRegId != null ? (list.find((r) => r.id === selectedRegId) ?? null) : null;
 
   async function start() {
     const wasLive = tournament.status === "live";
@@ -176,6 +272,7 @@ function LiveTournamentBody({
           : `${names} — ${result.place} место${ids.length > 1 ? " (тай)" : ""}.`,
       );
       setTieSelection(new Set());
+      setSelectedRegId(null);
     }
     await refresh();
   }
@@ -294,6 +391,22 @@ function LiveTournamentBody({
         </div>
       )}
 
+      {paymentTotals.size > 0 && (
+        <div className="rounded-lg border border-[var(--border)] p-3">
+          <p className="mb-2 text-xs font-medium text-[var(--muted-foreground)]">Итог за вечер по оплате</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            {(["cash", "transfer", "qr", "terminal", "unset"] as const)
+              .filter((key) => (paymentTotals.get(key) ?? 0) > 0)
+              .map((key) => (
+                <div key={key}>
+                  <p className="text-xs text-[var(--muted-foreground)]">{PAYMENT_LABELS[key]}</p>
+                  <p className="font-display text-base font-medium">{paymentTotals.get(key)} ₽</p>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
       {tournament.status === "upcoming" && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] p-3">
           <p className="text-xs text-[var(--muted-foreground)]">
@@ -333,75 +446,195 @@ function LiveTournamentBody({
             </div>
           )}
 
-          <div className="flex flex-col gap-3">
-            {[...tables.entries()]
-              .sort(([a], [b]) => a - b)
-              .map(([tableNumber, seats]) => (
-                <div key={tableNumber} className="rounded-lg border border-[var(--border)] p-3">
-                  <p className="mb-2 text-xs font-medium text-[var(--accent)]">Стол {tableNumber}</p>
-                  <div className="flex flex-col gap-1">
-                    {seats.map((r) => (
-                      <div
-                        key={r.id}
-                        className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[var(--surface-2)]"
-                      >
-                        <div className="flex min-w-0 items-center gap-2.5">
-                          <Checkbox
-                            checked={tieSelection.has(r.id)}
-                            onCheckedChange={() => toggleTie(r.id)}
-                            title="Отметить для одновременного вылета (тай)"
-                          />
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">
-                              {r.seatNumber}. {r.name}
-                            </p>
-                            <p className="truncate text-xs text-[var(--muted-foreground)]">
-                              Стек: {r.currentStack ?? "—"}
-                              {r.rebuyCount > 0 && ` · ребаев: ${r.rebuyCount}`}
-                              {r.addonCount > 0 && ` · аддонов: ${r.addonCount}`}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1">
-                          <button
-                            onClick={() => openStackAction(r, "rebuy")}
-                            disabled={busy}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
-                            aria-label="Ребай"
-                            title="Ребай"
-                          >
-                            <Coins className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => openStackAction(r, "addon")}
-                            disabled={busy}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
-                            aria-label="Аддон"
-                            title="Аддон"
-                          >
-                            <PlusCircle className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => eliminate([r.id])}
-                            disabled={busy}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
-                            aria-label="Выбыл"
-                            title="Выбыл"
-                          >
-                            <Skull className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+          {playing.length > 0 && (
+            <div className="flex justify-end gap-1">
+              <button
+                onClick={() => setViewMode("tables")}
+                className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs ${
+                  viewMode === "tables"
+                    ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
+                    : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)]"
+                }`}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" /> Столы
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs ${
+                  viewMode === "list"
+                    ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
+                    : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)]"
+                }`}
+              >
+                <List className="h-3.5 w-3.5" /> Список
+              </button>
+            </div>
+          )}
+
+          {viewMode === "tables" ? (
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {[...tables.entries()]
+                  .sort(([a], [b]) => a - b)
+                  .map(([tableNumber, seats]) => (
+                    <TableSeatChart
+                      key={tableNumber}
+                      tableNumber={tableNumber}
+                      seatsPerTable={tournament.seatsPerTable ?? Math.max(...seats.map((r) => r.seatNumber ?? 1))}
+                      seats={seats}
+                      tieSelection={tieSelection}
+                      selectedId={selectedRegId}
+                      onSelect={(reg) => setSelectedRegId((prev) => (prev === reg.id ? null : reg.id))}
+                    />
+                  ))}
+              </div>
+
+              {selectedReg && (
+                <div className="flex items-center gap-2 rounded-lg border border-[var(--accent)]/40 bg-[var(--surface-2)] p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      Стол {selectedReg.tableNumber}, место {selectedReg.seatNumber} — {selectedReg.name}
+                    </p>
+                    <p className="truncate text-xs text-[var(--muted-foreground)]">
+                      Стек: {selectedReg.currentStack ?? "—"}
+                      {selectedReg.rebuyCount > 0 && ` · ребаев: ${selectedReg.rebuyCount}`}
+                      {selectedReg.addonCount > 0 && ` · аддонов: ${selectedReg.addonCount}`}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      onClick={() => openStackAction(selectedReg, "rebuy")}
+                      disabled={busy}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                      aria-label="Ребай"
+                      title="Ребай"
+                    >
+                      <Coins className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => openStackAction(selectedReg, "addon")}
+                      disabled={busy}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                      aria-label="Аддон"
+                      title="Аддон"
+                    >
+                      <PlusCircle className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => toggleTie(selectedReg.id)}
+                      disabled={busy}
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                        tieSelection.has(selectedReg.id)
+                          ? "text-[var(--danger)] hover:bg-[var(--danger)]/10"
+                          : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                      }`}
+                      aria-label="Отметить для одновременного вылета"
+                      title="Отметить для одновременного вылета (тай)"
+                    >
+                      {tieSelection.has(selectedReg.id) ? (
+                        <CheckSquare className="h-3.5 w-3.5" />
+                      ) : (
+                        <Square className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => eliminate([selectedReg.id])}
+                      disabled={busy}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                      aria-label="Выбыл"
+                      title="Выбыл"
+                    >
+                      <Skull className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setSelectedRegId(null)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                      aria-label="Закрыть"
+                      title="Закрыть"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </div>
-              ))}
-            {playing.length === 0 && (
-              <p className="py-4 text-center text-sm text-[var(--muted-foreground)]">
-                Все игроки выбыли — можно завершить турнир.
-              </p>
-            )}
-          </div>
+              )}
+
+              {playing.length === 0 && (
+                <p className="py-4 text-center text-sm text-[var(--muted-foreground)]">
+                  Все игроки выбыли — можно завершить турнир.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {[...tables.entries()]
+                .sort(([a], [b]) => a - b)
+                .map(([tableNumber, seats]) => (
+                  <div key={tableNumber} className="rounded-lg border border-[var(--border)] p-3">
+                    <p className="mb-2 text-xs font-medium text-[var(--accent)]">Стол {tableNumber}</p>
+                    <div className="flex flex-col gap-1">
+                      {seats.map((r) => (
+                        <div
+                          key={r.id}
+                          className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[var(--surface-2)]"
+                        >
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <Checkbox
+                              checked={tieSelection.has(r.id)}
+                              onCheckedChange={() => toggleTie(r.id)}
+                              title="Отметить для одновременного вылета (тай)"
+                            />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">
+                                {r.seatNumber}. {r.name}
+                              </p>
+                              <p className="truncate text-xs text-[var(--muted-foreground)]">
+                                Стек: {r.currentStack ?? "—"}
+                                {r.rebuyCount > 0 && ` · ребаев: ${r.rebuyCount}`}
+                                {r.addonCount > 0 && ` · аддонов: ${r.addonCount}`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <button
+                              onClick={() => openStackAction(r, "rebuy")}
+                              disabled={busy}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                              aria-label="Ребай"
+                              title="Ребай"
+                            >
+                              <Coins className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => openStackAction(r, "addon")}
+                              disabled={busy}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                              aria-label="Аддон"
+                              title="Аддон"
+                            >
+                              <PlusCircle className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => eliminate([r.id])}
+                              disabled={busy}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                              aria-label="Выбыл"
+                              title="Выбыл"
+                            >
+                              <Skull className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              {playing.length === 0 && (
+                <p className="py-4 text-center text-sm text-[var(--muted-foreground)]">
+                  Все игроки выбыли — можно завершить турнир.
+                </p>
+              )}
+            </div>
+          )}
         </>
       )}
 
