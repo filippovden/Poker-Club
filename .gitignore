@@ -11,6 +11,9 @@
 # database (regenerated automatically on first run)
 data.sqlite
 
+# admin-uploaded announcement images — live on the server's disk only
+/public/uploads/
+
 # local DB backups produced by scripts/backup-db.sh — these belong on the
 # server's disk (or wherever the cron job is pointed), never in git
 /backups/

@@ -85,6 +85,22 @@ export async function sendTelegramMessage(
   return result?.result;
 }
 
+export async function sendTelegramPhoto(
+  chatId: string | number,
+  photoUrl: string,
+  caption: string,
+  options?: { buttons?: TelegramInlineKeyboardButton[][] },
+) {
+  const result = (await callApi("sendPhoto", {
+    chat_id: chatId,
+    photo: photoUrl,
+    caption,
+    parse_mode: "HTML",
+    reply_markup: options?.buttons ? { inline_keyboard: options.buttons } : undefined,
+  })) as { result?: { message_id: number } } | null;
+  return result?.result;
+}
+
 export async function answerCallbackQuery(callbackQueryId: string, text?: string) {
   await callApi("answerCallbackQuery", { callback_query_id: callbackQueryId, text });
 }

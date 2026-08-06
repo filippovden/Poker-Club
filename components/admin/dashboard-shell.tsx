@@ -2,7 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Users, Command as CommandIcon, Copy, PlayCircle, QrCode } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Command as CommandIcon, Copy, PlayCircle, QrCode, Megaphone } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { NewsFormDialog } from "./news-form-dialog";
 import { RegistrationsDialog } from "./registrations-dialog";
 import { LiveTournamentDialog } from "./live-tournament-dialog";
 import { CheckinQrDialog } from "./checkin-qr-dialog";
+import { AnnouncementDialog } from "./announcement-dialog";
 import { StatsPanel } from "./stats-panel";
 import type { TournamentStatsRow, PlayerStatsRow } from "@/lib/db/stats";
 import {
@@ -85,6 +86,10 @@ export function DashboardShell({
   const [checkinQrOpen, setCheckinQrOpen] = useState(false);
   const [checkinQrTournamentId, setCheckinQrTournamentId] = useState<number | null>(null);
   const checkinQrTournament = optimisticTournaments.find((t) => t.id === checkinQrTournamentId) ?? null;
+
+  const [announceOpen, setAnnounceOpen] = useState(false);
+  const [announceTournamentId, setAnnounceTournamentId] = useState<number | null>(null);
+  const announceTournament = optimisticTournaments.find((t) => t.id === announceTournamentId) ?? null;
 
   const [newsDialogOpen, setNewsDialogOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null);
@@ -372,6 +377,17 @@ export function DashboardShell({
                     </button>
                     <button
                       onClick={() => {
+                        setAnnounceTournamentId(t.id);
+                        setAnnounceOpen(true);
+                      }}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      aria-label="Объявление в Telegram"
+                      title="Объявление в Telegram"
+                    >
+                      <Megaphone className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => {
                         setEditingTournament(t);
                         setDuplicateSeed(null);
                         setTournamentError(undefined);
@@ -495,6 +511,12 @@ export function DashboardShell({
         onOpenChange={setCheckinQrOpen}
         tournamentId={checkinQrTournamentId}
         tournamentTitle={checkinQrTournament?.title ?? ""}
+      />
+      <AnnouncementDialog
+        open={announceOpen}
+        onOpenChange={setAnnounceOpen}
+        tournamentId={announceTournamentId}
+        tournamentTitle={announceTournament?.title ?? ""}
       />
     </div>
   );
