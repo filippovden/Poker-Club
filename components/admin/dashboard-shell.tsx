@@ -2,7 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Users, Command as CommandIcon, Copy, PlayCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Command as CommandIcon, Copy, PlayCircle, QrCode } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { TournamentFormDialog } from "./tournament-form-dialog";
 import { NewsFormDialog } from "./news-form-dialog";
 import { RegistrationsDialog } from "./registrations-dialog";
 import { LiveTournamentDialog } from "./live-tournament-dialog";
+import { CheckinQrDialog } from "./checkin-qr-dialog";
 import { StatsPanel } from "./stats-panel";
 import type { TournamentStatsRow, PlayerStatsRow } from "@/lib/db/stats";
 import {
@@ -81,6 +82,10 @@ export function DashboardShell({
   const [liveTournamentId, setLiveTournamentId] = useState<number | null>(null);
   const liveTournament = optimisticTournaments.find((t) => t.id === liveTournamentId) ?? null;
 
+  const [checkinQrOpen, setCheckinQrOpen] = useState(false);
+  const [checkinQrTournamentId, setCheckinQrTournamentId] = useState<number | null>(null);
+  const checkinQrTournament = optimisticTournaments.find((t) => t.id === checkinQrTournamentId) ?? null;
+
   const [newsDialogOpen, setNewsDialogOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null);
   const [newsError, setNewsError] = useState<string>();
@@ -140,6 +145,8 @@ export function DashboardShell({
       description: String(formData.get("description") || "") || null,
       status: String(formData.get("status")) as Tournament["status"],
       isHidden: formData.get("isHidden") === "on",
+      checkinRequired: formData.get("checkinRequired") === "on",
+      checkinToken: editingTournament?.checkinToken ?? null,
       createdAt: editingTournament?.createdAt ?? new Date().toISOString(),
     };
 
@@ -354,6 +361,17 @@ export function DashboardShell({
                     </button>
                     <button
                       onClick={() => {
+                        setCheckinQrTournamentId(t.id);
+                        setCheckinQrOpen(true);
+                      }}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      aria-label="QR для входа"
+                      title="QR для входа"
+                    >
+                      <QrCode className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => {
                         setEditingTournament(t);
                         setDuplicateSeed(null);
                         setTournamentError(undefined);
@@ -471,6 +489,12 @@ export function DashboardShell({
         onOpenChange={setLiveDialogOpen}
         tournament={liveTournament}
         onChanged={() => router.refresh()}
+      />
+      <CheckinQrDialog
+        open={checkinQrOpen}
+        onOpenChange={setCheckinQrOpen}
+        tournamentId={checkinQrTournamentId}
+        tournamentTitle={checkinQrTournament?.title ?? ""}
       />
     </div>
   );

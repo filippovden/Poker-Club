@@ -24,6 +24,16 @@ export const tournaments = sqliteTable("tournaments", {
   // listing, the homepage teaser, and Telegram broadcasts/bot menus, but
   // fully visible and playable from the admin dashboard.
   isHidden: integer("is_hidden", { mode: "boolean" }).notNull().default(false),
+  // Secret path segment for this tournament's check-in page
+  // (/checkin/TOKEN) — a random, unguessable value rather than the
+  // tournament id so the page can only be reached by scanning the QR code
+  // printed/shown at the venue, never by browsing the site.
+  checkinToken: text("checkin_token"),
+  // When true, seating (adminAssignSeats/adminRebalanceTables) is drawn
+  // only from registrations that scanned the QR check-in — off by default
+  // so tournaments that don't print/display the QR keep seating everyone
+  // approved, same as before this feature existed.
+  checkinRequired: integer("checkin_required", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),
@@ -62,6 +72,13 @@ export const registrations = sqliteTable("registrations", {
   place: integer("place"),
   telegramChatId: text("telegram_chat_id"),
   telegramUsername: text("telegram_username"),
+  // Self-service QR check-in at the venue door — set once this person
+  // scans the tournament's shared QR code and confirms their own
+  // registration by phone+name. Lets seating be based on who's actually
+  // in the building, not just who applied.
+  checkedIn: integer("checked_in", { mode: "boolean" }).notNull().default(false),
+  checkedInAt: text("checked_in_at"),
+  paymentMethod: text("payment_method", { enum: ["cash", "transfer", "qr", "terminal"] }),
   reminded72h: integer("reminded_72h", { mode: "boolean" }).notNull().default(false),
   reminded48h: integer("reminded_48h", { mode: "boolean" }).notNull().default(false),
   reminded24h: integer("reminded_24h", { mode: "boolean" }).notNull().default(false),

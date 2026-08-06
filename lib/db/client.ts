@@ -1,4 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import * as schema from "./schema";
@@ -173,6 +174,28 @@ sqlite.exec(`
     created_at TEXT NOT NULL DEFAULT (current_timestamp)
   );
 `);
+
+// tournaments.checkin_token + registrations.checked_in/checked_in_at/
+// payment_method power the QR self-check-in system — backfill for
+// existing databases.
+addColumnIfMissing("tournaments", "checkin_token", "TEXT");
+addColumnIfMissing("tournaments", "checkin_required", "INTEGER NOT NULL DEFAULT 0");
+addColumnIfMissing("registrations", "checked_in", "INTEGER NOT NULL DEFAULT 0");
+addColumnIfMissing("registrations", "checked_in_at", "TEXT");
+addColumnIfMissing("registrations", "payment_method", "TEXT");
+
+// Every tournament needs its own check-in token, but ALTER TABLE can't
+// backfill a per-row random value — generate one in JS for any row that
+// doesn't have one yet (new tournaments already get one at creation time).
+{
+  const missingTokens = sqlite
+    .prepare("SELECT id FROM tournaments WHERE checkin_token IS NULL")
+    .all() as { id: number }[];
+  if (missingTokens.length > 0) {
+    const stmt = sqlite.prepare("UPDATE tournaments SET checkin_token = ? WHERE id = ?");
+    for (const row of missingTokens) stmt.run(randomUUID(), row.id);
+  }
+}
 
 export const db = drizzle(
   async (sql, params, method) => {

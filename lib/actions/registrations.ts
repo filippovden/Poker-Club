@@ -409,6 +409,7 @@ export interface AssignSeatsResult {
   error?: string;
   seated?: number;
   unseated?: number;
+  notCheckedIn?: number;
 }
 
 // Seats only the not-yet-seated approved applicants — players who are
@@ -418,6 +419,12 @@ export interface AssignSeatsResult {
 // each placed at whichever table currently has the fewest occupants, so
 // the whole tournament stays balanced (every table within 1 player of
 // every other) no matter how many passes this runs across.
+//
+// When the tournament has QR check-in enabled, only approved applicants
+// who actually scanned the door QR are eligible for a *new* seat — this
+// is what makes seating reflect who showed up, not just who applied.
+// Anyone already seated keeps their seat either way (an admin's earlier
+// manual placement isn't retroactively undone by this).
 export async function adminAssignSeats(tournamentId: number): Promise<AssignSeatsResult> {
   await requireAdmin();
 
@@ -441,7 +448,13 @@ export async function adminAssignSeats(tournamentId: number): Promise<AssignSeat
     t != null && s != null && t >= 1 && t <= tableCount && s >= 1 && s <= seatsPerTable;
 
   const alreadySeated = approved.filter((r) => isValidSeat(r.tableNumber, r.seatNumber));
-  const needsSeating = approved.filter((r) => !isValidSeat(r.tableNumber, r.seatNumber));
+  const notYetSeated = approved.filter((r) => !isValidSeat(r.tableNumber, r.seatNumber));
+  const needsSeating = tournament.checkinRequired
+    ? notYetSeated.filter((r) => r.checkedIn)
+    : notYetSeated;
+  const notCheckedIn = tournament.checkinRequired
+    ? notYetSeated.filter((r) => !r.checkedIn).length
+    : 0;
 
   const occupiedByTable: Set<number>[] = Array.from({ length: tableCount }, () => new Set<number>());
   for (const r of alreadySeated) {
@@ -475,7 +488,7 @@ export async function adminAssignSeats(tournamentId: number): Promise<AssignSeat
 
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
-  return { seated: alreadySeated.length + toSeat.length, unseated: overflow.length };
+  return { seated: alreadySeated.length + toSeat.length, unseated: overflow.length, notCheckedIn };
 }
 
 // --- live tournament play: start, rebuy/addon, elimination, finish -------
@@ -890,5 +903,25 @@ export async function adminSetPlace(id: number, place: number | null) {
   await requireAdmin();
   await db.update(registrations).set({ place }).where(eq(registrations.id, id));
   revalidatePath("/tournaments");
+  revalidatePath("/admin/dashboard");
+}
+
+// Manual override for people the door QR doesn't work for (no smartphone,
+// dead battery, etc.) — same effect as scanning and confirming themselves.
+export async function adminSetCheckedIn(id: number, checkedIn: boolean) {
+  await requireAdmin();
+  await db
+    .update(registrations)
+    .set({ checkedIn, checkedInAt: checkedIn ? new Date().toISOString() : null })
+    .where(eq(registrations.id, id));
+  revalidatePath("/admin/dashboard");
+}
+
+export async function adminSetPaymentMethod(
+  id: number,
+  paymentMethod: "cash" | "transfer" | "qr" | "terminal" | null,
+) {
+  await requireAdmin();
+  await db.update(registrations).set({ paymentMethod }).where(eq(registrations.id, id));
   revalidatePath("/admin/dashboard");
 }

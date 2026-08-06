@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { and, eq, gt, isNotNull, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -24,6 +25,7 @@ const tournamentSchema = z
     description: z.string().nullable(),
     status: z.enum(["upcoming", "live", "completed"]),
     isHidden: z.coerce.boolean(),
+    checkinRequired: z.coerce.boolean(),
   })
   .refine((v) => (v.tableCount == null) === (v.seatsPerTable == null), {
     message: "Укажите и число столов, и мест за столом (или оставьте оба поля пустыми)",
@@ -105,6 +107,7 @@ export async function createTournamentAction(
     description: formData.get("description") || null,
     status: formData.get("status") || "upcoming",
     isHidden: formData.get("isHidden"),
+    checkinRequired: formData.get("checkinRequired"),
   });
 
   if (!parsed.success) {
@@ -116,7 +119,10 @@ export async function createTournamentAction(
     startsAt: samaraWallClockToUtcIso(parsed.data.startsAt),
   });
 
-  const [created] = await db.insert(tournaments).values(baseValues).returning();
+  const [created] = await db
+    .insert(tournaments)
+    .values({ ...baseValues, checkinToken: randomUUID() })
+    .returning();
   revalidatePath("/tournaments");
   revalidatePath("/admin/dashboard");
 
@@ -142,6 +148,7 @@ export async function createTournamentAction(
     await db.insert(tournaments).values({
       ...baseValues,
       startsAt: new Date(baseStartsAt + week * 7 * 24 * 3_600_000).toISOString(),
+      checkinToken: randomUUID(),
     });
     createdCount++;
   }
@@ -174,6 +181,7 @@ export async function updateTournamentAction(
     description: formData.get("description") || null,
     status: formData.get("status") || "upcoming",
     isHidden: formData.get("isHidden"),
+    checkinRequired: formData.get("checkinRequired"),
   });
 
   if (!parsed.success) {

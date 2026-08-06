@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Armchair, Check, CheckCheck, Pencil, Plus, Shuffle, Trash2, X } from "lucide-react";
+import { Armchair, Check, CheckCheck, Pencil, Plus, QrCode, Shuffle, Trash2, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,8 @@ import {
   adminAssignSeats,
   adminListRegistrations,
   adminRemoveRegistration,
+  adminSetCheckedIn,
+  adminSetPaymentMethod,
   adminSetPlace,
   adminSetRegistrationStatus,
   adminSetSeat,
@@ -34,6 +36,13 @@ function formatDate(iso: string) {
     minute: "2-digit",
   });
 }
+
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: "Наличные",
+  transfer: "Перевод",
+  qr: "QR-оплата",
+  terminal: "Терминал",
+};
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   pending: { label: "Ожидает", className: "text-[var(--muted-foreground)]" },
@@ -150,6 +159,21 @@ function RegistrationsList({
     );
   }
 
+  async function toggleCheckedIn(id: number, next: boolean) {
+    await adminSetCheckedIn(id, next);
+    setList((prev) =>
+      prev?.map((r) =>
+        r.id === id ? { ...r, checkedIn: next, checkedInAt: next ? new Date().toISOString() : null } : r,
+      ) ?? null,
+    );
+  }
+
+  async function setPaymentMethod(id: number, value: string) {
+    const method = (value || null) as "cash" | "transfer" | "qr" | "terminal" | null;
+    await adminSetPaymentMethod(id, method);
+    setList((prev) => prev?.map((r) => (r.id === id ? { ...r, paymentMethod: method } : r)) ?? null);
+  }
+
   async function setSeatManually(id: number, tableValue: string, seatValue: string) {
     const table = tableValue.trim() === "" ? null : Number(tableValue);
     const seat = seatValue.trim() === "" ? null : Number(seatValue);
@@ -169,11 +193,10 @@ function RegistrationsList({
       setSeatingNote(result.error);
       return;
     }
-    setSeatingNote(
-      result.unseated
-        ? `Рассажено: ${result.seated}. Не поместились: ${result.unseated}.`
-        : `Рассажено: ${result.seated}.`,
-    );
+    const parts = [`Рассажено: ${result.seated}.`];
+    if (result.unseated) parts.push(`Не поместились: ${result.unseated}.`);
+    if (result.notCheckedIn) parts.push(`Ещё не отметились по QR: ${result.notCheckedIn}.`);
+    setSeatingNote(parts.join(" "));
     const fresh = await adminListRegistrations(tournamentId);
     setList(fresh);
   }
@@ -333,8 +356,16 @@ function RegistrationsList({
                       💬 {r.comment}
                     </p>
                   )}
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className={`text-xs font-medium ${badge.className}`}>{badge.label}</p>
+                    {(r.status === "approved" || r.status === "playing") && r.checkedIn && (
+                      <p className="text-xs text-[var(--live)]">✓ по QR</p>
+                    )}
+                    {r.paymentMethod && (
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        {PAYMENT_LABELS[r.paymentMethod] ?? r.paymentMethod}
+                      </p>
+                    )}
                     {r.status === "approved" && r.tableNumber != null && (
                       <p className="text-xs text-[var(--accent)]">
                         Стол {r.tableNumber}, место {r.seatNumber}
@@ -398,6 +429,34 @@ function RegistrationsList({
                           className="h-8 w-12 rounded-lg border border-[var(--border)] bg-transparent px-1.5 text-xs"
                         />
                       </div>
+                    )}
+                    {(r.status === "approved" || r.status === "playing") && (
+                      <>
+                        <select
+                          defaultValue={r.paymentMethod ?? ""}
+                          onChange={(e) => setPaymentMethod(r.id, e.target.value)}
+                          title="Способ оплаты"
+                          className="h-8 rounded-lg border border-[var(--border)] bg-transparent px-1.5 text-xs"
+                        >
+                          <option value="">Оплата?</option>
+                          <option value="cash">Наличные</option>
+                          <option value="transfer">Перевод</option>
+                          <option value="qr">QR-оплата</option>
+                          <option value="terminal">Терминал</option>
+                        </select>
+                        <button
+                          onClick={() => toggleCheckedIn(r.id, !r.checkedIn)}
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                            r.checkedIn
+                              ? "text-[var(--live)] hover:bg-[var(--live)]/10"
+                              : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                          }`}
+                          aria-label={r.checkedIn ? "Отметить как не пришедшего" : "Отметить пришедшим вручную"}
+                          title={r.checkedIn ? "Отметить как не пришедшего" : "Отметить пришедшим вручную (нет QR)"}
+                        >
+                          <QrCode className="h-3.5 w-3.5" />
+                        </button>
+                      </>
                     )}
                     {r.status === "approved" && hasTables && r.tableNumber != null && (
                       <button

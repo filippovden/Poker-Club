@@ -34,6 +34,7 @@ export interface TournamentFormValues {
   description: string;
   status: "upcoming" | "live" | "completed";
   isHidden: boolean;
+  checkinRequired: boolean;
 }
 
 function TournamentFormFields({
@@ -59,6 +60,7 @@ function TournamentFormFields({
   );
   const [useTables, setUseTables] = useState(source?.tableCount != null);
   const [isHidden, setIsHidden] = useState(source?.isHidden ?? false);
+  const [checkinRequired, setCheckinRequired] = useState(source?.checkinRequired ?? false);
   const [repeatWeekly, setRepeatWeekly] = useState(false);
   const [repeatWeeks, setRepeatWeeks] = useState(3);
 
@@ -68,6 +70,7 @@ function TournamentFormFields({
         formData.set("format", format);
         formData.set("status", status);
         formData.set("isHidden", isHidden ? "on" : "");
+        formData.set("checkinRequired", checkinRequired ? "on" : "");
         formData.set("repeatWeeks", repeatWeekly ? String(repeatWeeks) : "0");
         onSubmit(formData);
       }}
@@ -82,6 +85,17 @@ function TournamentFormFields({
         <Checkbox checked={isHidden} onCheckedChange={(v) => setIsHidden(v === true)} />
         Скрытый тестовый турнир (не отображается на сайте и не рассылается в боте)
       </label>
+
+      <label className="flex items-center gap-2.5 rounded-lg border border-[var(--border)] p-3 text-sm font-medium">
+        <Checkbox checked={checkinRequired} onCheckedChange={(v) => setCheckinRequired(v === true)} />
+        Рассаживать только тех, кто отметился по QR на входе
+      </label>
+      {checkinRequired && (
+        <p className="-mt-2 px-1 text-xs text-[var(--muted-foreground)]">
+          QR-код для входа появится в списке турниров (значок QR) после сохранения. Пока никто не
+          отметился — «Рассадить» никого не посадит.
+        </p>
+      )}
 
       {!tournament && (
         <div className="flex flex-col gap-3 rounded-lg border border-[var(--border)] p-3">
