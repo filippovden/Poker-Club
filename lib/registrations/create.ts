@@ -77,7 +77,11 @@ export async function createRegistration(params: {
       and(
         eq(registrations.tournamentId, tournamentId),
         or(...duplicateConditions),
-        or(eq(registrations.status, "pending"), eq(registrations.status, "approved")),
+        // Covers every status that means "already has a live application or
+        // is already at the table" — not just pending/approved, since a
+        // seated/playing/busted player re-submitting shouldn't create a
+        // second application for a tournament they're already part of.
+        inArray(registrations.status, ["pending", "approved", "playing", "eliminated"]),
       ),
     )
     .limit(1);

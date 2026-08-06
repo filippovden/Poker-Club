@@ -154,7 +154,7 @@ export function TournamentCard({
 
       {spotsLeft !== null && !isPast && (
         <span className={`text-xs ${isFull ? "text-[var(--danger)]" : "text-[var(--muted-foreground)]"}`}>
-          {isFull ? "Все места заняты — открыт лист ожидания" : `Осталось мест: ${spotsLeft}`}
+          {isFull ? "Все места заняты" : `Осталось мест: ${spotsLeft}`}
         </span>
       )}
 
@@ -163,13 +163,14 @@ export function TournamentCard({
           <Button
             size="sm"
             onClick={() => setDialogOpen(true)}
+            disabled={isFull}
             className="w-full"
           >
-            {isFull ? "Встать в лист ожидания" : "Подать заявку"}
+            {isFull ? "Мест нет" : "Подать заявку"}
           </Button>
           {isFull ? (
             <p className="text-center text-[11px] text-[var(--muted-foreground)]">
-              Мест нет, но если кто-то отменит заявку — свяжемся с вами
+              Свободных мест сейчас нет — если кто-то отменит заявку, места может стать больше
             </p>
           ) : (
             <p className="text-center text-[11px] text-[var(--muted-foreground)]">

@@ -140,27 +140,40 @@ export async function lookupRegistrationsAction(phone: string, name: string): Pr
     return { error: "Введите телефон и имя, указанные при регистрации" };
   }
 
-  const rows = await db
-    .select()
-    .from(registrations)
-    .innerJoin(tournaments, eq(registrations.tournamentId, tournaments.id))
-    .where(eq(tournaments.isHidden, false));
-
-  const matches = rows.filter(
-    (r) =>
-      normalizePhone(r.registrations.phone) === normalizedPhone &&
-      r.registrations.name.trim().toLowerCase() === normalizedName,
+  // Two single-table queries rather than a join: this app's sqlite-proxy
+  // driver (lib/db/client.ts) rebuilds every row as a plain object keyed
+  // by column name, so a joined `select()` between two tables that share
+  // column names (id, status, created_at — both registrations and
+  // tournaments have all three) silently collapses those columns into
+  // each other, misaligning every value in the row. Never join two
+  // tables here without either giving every column a unique alias or, as
+  // below, avoiding the join entirely.
+  const allRegs = await db.select().from(registrations);
+  const matches = allRegs.filter(
+    (r) => normalizePhone(r.phone) === normalizedPhone && r.name.trim().toLowerCase() === normalizedName,
   );
 
   if (matches.length === 0) {
     return { error: "Заявки не найдены — проверьте телефон и имя (как указывали при регистрации)" };
   }
 
-  return {
-    items: matches
-      .map((r) => ({ registration: r.registrations, tournament: r.tournaments }))
-      .sort((a, b) => new Date(b.tournament.startsAt).getTime() - new Date(a.tournament.startsAt).getTime()),
-  };
+  const tournamentIds = [...new Set(matches.map((r) => r.tournamentId))];
+  const matchedTournaments = await db.select().from(tournaments).where(inArray(tournaments.id, tournamentIds));
+  const tournamentById = new Map(matchedTournaments.map((t) => [t.id, t]));
+
+  const items = matches
+    .map((r) => {
+      const t = tournamentById.get(r.tournamentId);
+      return t && !t.isHidden ? { registration: r, tournament: t } : null;
+    })
+    .filter((item): item is LookupResultItem => item !== null)
+    .sort((a, b) => new Date(b.tournament.startsAt).getTime() - new Date(a.tournament.startsAt).getTime());
+
+  if (items.length === 0) {
+    return { error: "Заявки не найдены — проверьте телефон и имя (как указывали при регистрации)" };
+  }
+
+  return { items };
 }
 
 async function requireAdmin() {

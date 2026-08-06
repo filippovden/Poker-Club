@@ -30,10 +30,13 @@ export async function setRegistrationStatus(
     .where(eq(tournaments.id, registration.tournamentId))
     .limit(1);
 
-  // Applications aren't capped (they queue up as a waitlist once seats run
-  // out — see lib/registrations/create.ts), so the real limit has to be
-  // enforced here, at the moment someone is actually confirmed a seat —
-  // otherwise a quick tap on the Telegram button could overbook a tournament.
+  // New applications are already blocked once the tournament is full (see
+  // lib/registrations/create.ts) — this check is a second, independent
+  // guard for the few paths that can still create/approve a registration
+  // past that point (an admin walk-in via adminAddWalkIn, or approving a
+  // pending application that was submitted just before the cap was hit),
+  // so a quick tap on the Telegram approve button can't overbook a
+  // tournament that's actually already full.
   if (status === "approved" && registration.status !== "approved" && tournament?.maxPlayers) {
     // Once the tournament starts, already-confirmed players move from
     // "approved" through "playing"/"eliminated" — they still occupy the

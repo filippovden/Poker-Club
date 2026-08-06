@@ -181,7 +181,7 @@ export function buildNextTournamentMessage(
     (spotsLeft !== null
       ? spotsLeft > 0
         ? `🪑 Осталось мест: ${spotsLeft}`
-        : `🪑 Мест нет — доступна запись в лист ожидания`
+        : `🪑 Мест нет — регистрация закрыта`
       : "") +
     `\n${venueLine()}`
   );
