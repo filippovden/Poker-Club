@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   checkinFindRegistrationAction,
+  checkinRegisterAndConfirmAction,
   confirmCheckinAction,
   type CheckinMatch,
 } from "@/lib/actions/checkin";
@@ -60,12 +63,70 @@ function MatchCard({ token, match }: { token: string; match: CheckinMatch }) {
   );
 }
 
+// Shown when phone+name don't match any application — a real walk-in who
+// never applied online. Registers them and marks them checked-in in one
+// step rather than sending them to the full site form at the door.
+function NewGuestForm({ token, name, phone }: { token: string; name: string; phone: string }) {
+  const [consent, setConsent] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [checkedInAt, setCheckedInAt] = useState<string | null>(null);
+
+  async function handleRegister() {
+    setPending(true);
+    setError(null);
+    const res = await checkinRegisterAndConfirmAction(token, phone, name, consent);
+    setPending(false);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    setCheckedInAt(res.checkedInAt ?? new Date().toISOString());
+  }
+
+  if (checkedInAt) {
+    return (
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+        <p className="font-display text-base font-medium">{name}</p>
+        <p className="mt-4 text-sm font-medium text-[var(--accent)]">
+          Вы зарегистрированы и отмечены в {formatTime(checkedInAt)} ✓
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+      <p className="font-display text-base font-medium">{name}</p>
+      <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+        Заявки с таким именем и телефоном нет — похоже, вы не подавали заявку заранее. Отметим вас
+        прямо сейчас.
+      </p>
+      <label className="mt-4 flex items-start gap-2.5 text-xs leading-relaxed text-[var(--muted-foreground)]">
+        <Checkbox checked={consent} onCheckedChange={(v) => setConsent(v === true)} className="mt-0.5" />
+        <span>
+          Даю согласие на обработку персональных данных в соответствии с{" "}
+          <Link href="/legal" target="_blank" className="underline hover:text-[var(--foreground)]">
+            Политикой обработки персональных данных
+          </Link>{" "}
+          и подтверждаю, что мне исполнилось 18 лет.
+        </span>
+      </label>
+      {error && <p className="mt-3 text-sm text-[var(--danger)]">{error}</p>}
+      <Button disabled={pending} onClick={handleRegister} className="mt-4">
+        {pending ? "Регистрируем…" : "Зарегистрироваться и отметиться"}
+      </Button>
+    </div>
+  );
+}
+
 export function CheckinView({ token }: { token: string }) {
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [matches, setMatches] = useState<CheckinMatch[] | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -76,9 +137,11 @@ export function CheckinView({ token }: { token: string }) {
     if (result.error) {
       setError(result.error);
       setMatches(null);
+      setNotFound(false);
       return;
     }
-    setMatches(result.matches ?? []);
+    setNotFound(result.notFound ?? false);
+    setMatches(result.matches ?? null);
   }
 
   if (matches && matches.length > 0) {
@@ -89,6 +152,10 @@ export function CheckinView({ token }: { token: string }) {
         ))}
       </div>
     );
+  }
+
+  if (notFound) {
+    return <NewGuestForm token={token} name={name.trim()} phone={phone.trim()} />;
   }
 
   return (
