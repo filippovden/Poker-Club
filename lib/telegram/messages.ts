@@ -141,7 +141,7 @@ export const MAIN_MENU_KEYBOARD = [
 // The admin (staff) chat gets its own menu, entirely separate from the
 // player-facing one above — different chat, different job.
 export const ADMIN_MENU_LABELS = {
-  participants: "👥 Участники ближайшего турнира",
+  participants: "👥 Участники турнира",
   search: "🔍 Найти игрока",
 } as const;
 

@@ -19,6 +19,8 @@ import {
   buildNextTournamentMessage,
   buildParticipantsListMessage,
   buildRegisteredMessage,
+  formatDateOnly,
+  formatTimeOnly,
   ADMIN_MENU_KEYBOARD,
   ADMIN_MENU_LABELS,
   MAIN_MENU_KEYBOARD,
@@ -67,6 +69,22 @@ async function getNextTournament(): Promise<Tournament | null> {
     .orderBy(asc(tournaments.startsAt))
     .limit(1);
   return tournament ?? null;
+}
+
+function tournamentButtonLabel(t: Tournament) {
+  return `${t.title} — ${formatDateOnly(t.startsAt)} ${formatTimeOnly(t.startsAt)}`;
+}
+
+// Every non-finished, publicly visible tournament, soonest first — the
+// pool a player can pick from when applying (capped well above anything
+// this club would realistically ever have scheduled at once).
+async function listApplicableTournaments(): Promise<Tournament[]> {
+  return db
+    .select()
+    .from(tournaments)
+    .where(and(not(eq(tournaments.status, "completed")), eq(tournaments.isHidden, false)))
+    .orderBy(asc(tournaments.startsAt))
+    .limit(20);
 }
 
 async function buildCancelButtons(rows: { id: number; tournamentId: number }[]) {
@@ -205,6 +223,27 @@ async function startApplication(chatId: number, tournamentId?: number, skipReuse
 
   pendingApplications.set(chatId, { step: "name", tournamentId: tournament.id });
   await sendTelegramMessage(chatId, "Как вас зовут?", { buttons: ABORT_BUTTON });
+}
+
+// Entry point for "✍️ Подать заявку" — shows a tournament picker rather
+// than assuming the nearest one, since there's often more than one
+// upcoming tournament to choose from. Skips straight to startApplication
+// when there's only one, so picking one out of one isn't a wasted tap.
+async function handleApplyMenu(chatId: number) {
+  const list = await listApplicableTournaments();
+  if (list.length === 0) {
+    await sendTelegramMessage(chatId, "Сейчас нет турниров, на которые можно записаться.", {
+      replyKeyboard: MAIN_MENU_KEYBOARD,
+    });
+    return;
+  }
+  if (list.length === 1) {
+    await startApplication(chatId, list[0].id);
+    return;
+  }
+  await sendTelegramMessage(chatId, "На какой турнир хотите записаться?", {
+    buttons: list.map((t) => [{ text: tournamentButtonLabel(t), callback_data: `apply_start:${t.id}` }]),
+  });
 }
 
 async function continueApplication(chatId: number, text: string) {
@@ -459,12 +498,29 @@ async function handleAdminSearch(chatId: number, rawQuery: string) {
   });
 }
 
-async function handleParticipantsList(chatId: number) {
-  const tournament = await getNextTournament();
+// Admins can pull up any tournament's roster, not just the nearest one —
+// includes hidden test tournaments (unlike the player-facing pickers)
+// and completed ones, since staff legitimately want to review both.
+async function handleParticipantsMenu(chatId: number) {
+  const list = await db.select().from(tournaments).orderBy(desc(tournaments.startsAt)).limit(20);
+  if (list.length === 0) {
+    await sendTelegramMessage(chatId, "Турниров пока нет.", { replyKeyboard: ADMIN_MENU_KEYBOARD });
+    return;
+  }
+  await sendTelegramMessage(chatId, "Заявки какого турнира показать?", {
+    buttons: list.map((t) => [
+      {
+        text: `${tournamentButtonLabel(t)}${t.isHidden ? " (тест)" : ""}`,
+        callback_data: `participants_show:${t.id}`,
+      },
+    ]),
+  });
+}
+
+async function handleParticipantsList(chatId: number, tournamentId: number) {
+  const [tournament] = await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1);
   if (!tournament) {
-    await sendTelegramMessage(chatId, "Сейчас нет предстоящих турниров.", {
-      replyKeyboard: ADMIN_MENU_KEYBOARD,
-    });
+    await sendTelegramMessage(chatId, "Турнир не найден.", { replyKeyboard: ADMIN_MENU_KEYBOARD });
     return;
   }
 
@@ -498,7 +554,7 @@ async function handleAdminMessage(chatId: number, text: string) {
   pendingAdminSearch.delete(chatId);
 
   if (text === ADMIN_MENU_LABELS.participants || /^\/participants\b/.test(text)) {
-    await handleParticipantsList(chatId);
+    await handleParticipantsMenu(chatId);
     return;
   }
   if (text === ADMIN_MENU_LABELS.search || /^\/find\b/.test(text)) {
@@ -554,7 +610,7 @@ async function handleMessage(update: TelegramUpdate) {
     return;
   }
   if (text === MENU_LABELS.apply) {
-    await startApplication(chatId);
+    await handleApplyMenu(chatId);
     return;
   }
 
@@ -737,6 +793,24 @@ async function handleApplyCallback(
   await confirmApplication(chatId, query.from.username);
 }
 
+// Only ever shown on the picker sent to the admin chat, so the same
+// admin-chat authorization boundary as approve/reject and admin_cancel.
+async function handleParticipantsShowCallback(
+  query: NonNullable<TelegramUpdate["callback_query"]>,
+  tournamentId: number,
+) {
+  if (!query.message) return;
+
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (!adminChatId || String(query.message.chat.id) !== String(adminChatId)) {
+    await answerCallbackQuery(query.id, "Недостаточно прав");
+    return;
+  }
+
+  await answerCallbackQuery(query.id);
+  await handleParticipantsList(query.message.chat.id, tournamentId);
+}
+
 async function handleCallbackQuery(update: TelegramUpdate) {
   const query = update.callback_query;
   if (!query?.data || !query.message) return;
@@ -763,6 +837,12 @@ async function handleCallbackQuery(update: TelegramUpdate) {
   const adminCancelMatch = /^admin_cancel:(\d+)$/.exec(query.data);
   if (adminCancelMatch) {
     await handleAdminCancelCallback(query, Number(adminCancelMatch[1]));
+    return;
+  }
+
+  const participantsShowMatch = /^participants_show:(\d+)$/.exec(query.data);
+  if (participantsShowMatch) {
+    await handleParticipantsShowCallback(query, Number(participantsShowMatch[1]));
     return;
   }
 
