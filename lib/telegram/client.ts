@@ -1,8 +1,23 @@
+import { ProxyAgent } from "undici";
+
 const API_BASE = "https://api.telegram.org";
 
 function apiUrl(method: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   return `${API_BASE}/bot${token}/${method}`;
+}
+
+// Telegram's own API IP ranges are blocked outbound from some Russian
+// hosting networks (confirmed via direct curl — both IPv4 and IPv6 time
+// out), independent of the bot token or app code. Routing just these
+// requests through an external HTTP(S) proxy works around that without
+// moving player data (the DB) off the Russian server, so it stays
+// 152-FZ-compliant. No-op (direct connection) when the env var is unset.
+const proxyUrl = process.env.TELEGRAM_PROXY_URL;
+const dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
+
+function fetchOptions(init: RequestInit): RequestInit {
+  return dispatcher ? ({ ...init, dispatcher } as RequestInit) : init;
 }
 
 export interface TelegramInlineKeyboardButton {
@@ -41,11 +56,14 @@ function sleep(ms: number) {
 async function callApi(method: string, body: Record<string, unknown>, attempt = 1): Promise<unknown> {
   if (!process.env.TELEGRAM_BOT_TOKEN) return null;
   try {
-    const res = await fetch(apiUrl(method), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const res = await fetch(
+      apiUrl(method),
+      fetchOptions({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    );
     if (!res.ok) {
       if ((res.status >= 500 || res.status === 429) && attempt < 3) {
         await sleep(attempt * 1000);
@@ -125,7 +143,7 @@ export async function getTelegramUpdates(offset: number, timeoutSeconds: number)
     `${apiUrl("getUpdates")}?offset=${offset}&timeout=${timeoutSeconds}&allowed_updates=["message","callback_query"]`,
     // Long-poll requests wait up to `timeout` seconds on Telegram's side —
     // give fetch a little extra room before it gives up on its own.
-    { signal: AbortSignal.timeout((timeoutSeconds + 10) * 1000) },
+    fetchOptions({ signal: AbortSignal.timeout((timeoutSeconds + 10) * 1000) }),
   );
   if (!res.ok) throw new Error(`getUpdates failed: ${res.status}`);
   const data = (await res.json()) as { ok: boolean; result: TelegramUpdate[] };
