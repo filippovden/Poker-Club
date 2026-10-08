@@ -1,6 +1,10 @@
 import { ProxyAgent } from "undici";
 
-const API_BASE = "https://api.telegram.org";
+// Overridable so a lightweight passthrough relay (e.g. a Cloudflare Worker
+// that forwards byte-for-byte to api.telegram.org) can stand in when
+// Telegram's own IPs are blocked outbound from this host's network — see
+// the TELEGRAM_PROXY_URL comment below for why that's needed at all.
+const API_BASE = process.env.TELEGRAM_API_BASE || "https://api.telegram.org";
 
 function apiUrl(method: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
