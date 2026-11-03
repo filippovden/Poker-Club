@@ -114,8 +114,8 @@ html:not([data-age-gate="confirmed"]) body {
 }
 
 @keyframes hero-drift {
-  0%, 100% { transform: translateY(0) scale(1.02); }
-  50% { transform: translateY(-10px) scale(1.055); }
+  0%, 100% { transform: scale(1.01); }
+  50% { transform: scale(1.045); }
 }
 
 .hero-card-art {
@@ -135,12 +135,23 @@ html:not([data-age-gate="confirmed"]) body {
 
 /* Editorial club identity: warm gold, dark felt and one restrained motion. */
 .royal-editorial { font-family: Georgia, "Times New Roman", serif; font-weight: 400; }
-.royal-hero { background: #0b0c0b; }
-.royal-hero-art { position: absolute; z-index: -3; top: 0; right: -2%; width: 65%; height: 100%; opacity: .85; }
-.royal-hero-shade { position: absolute; z-index: -2; inset: 0; background: linear-gradient(90deg,#0b0c0b 10%,rgba(11,12,11,.94) 30%,rgba(11,12,11,.35) 58%,rgba(11,12,11,.06)),linear-gradient(0deg,#0b0c0b,transparent 35%); }
-.royal-hero-halo { position: absolute; z-index: -1; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 15% 80%,rgba(189,145,66,.08),transparent 55%); }
+.royal-hero { background: #0b0c0b; min-height: 730px; }
+.royal-hero-art { position: absolute; z-index: -3; inset: 0; opacity: .98; }
+.royal-hero-art img { object-position: center 52%; }
+.royal-hero-shade { position: absolute; z-index: -2; inset: 0; background: linear-gradient(90deg,rgba(9,9,8,.96) 0%,rgba(9,9,8,.87) 26%,rgba(9,9,8,.52) 48%,rgba(9,9,8,.06) 84%),linear-gradient(0deg,#0b0c0b 0%,transparent 24%,transparent 73%,rgba(9,9,8,.22) 100%); }
+.royal-hero-halo { position: absolute; z-index: -1; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 18% 60%,rgba(124,85,33,.13),transparent 50%); }
+.royal-kicker { display: flex; align-items: center; gap: .9rem; color: #dfbf80; font-size: .68rem; font-weight: 600; letter-spacing: .25em; text-transform: uppercase; }
+.royal-kicker-line { display: block; width: 2.25rem; height: 1px; background: currentColor; }
+.royal-next-event { border-top: 1px solid rgba(224,188,125,.35); background: linear-gradient(90deg,rgba(9,11,9,.94),rgba(9,11,9,.69)); box-shadow: 0 -18px 48px rgba(0,0,0,.12); }
+.royal-next-event::before { content: ""; position: absolute; inset: 0 calc((min(100vw,80rem) - 100vw)/2 - 2.5rem); z-index: -1; background: linear-gradient(90deg,rgba(9,11,9,.95),rgba(9,11,9,.76)); }
+.royal-event-link { display: inline-flex; align-items: center; gap: 1rem; white-space: nowrap; border: 1px solid rgba(212,170,84,.55); border-radius: 999px; padding: .75rem 1.25rem; transition: background .2s,color .2s; }
+.royal-event-link:hover { background: var(--accent); color: var(--accent-foreground); }
+.royal-section-label { display: flex; align-items: center; gap: .75rem; color: var(--accent); font-size: .7rem; font-weight: 600; letter-spacing: .23em; text-transform: uppercase; }
+.royal-section-label::before { content: ""; width: 1.8rem; height: 1px; background: currentColor; }
 @media(max-width:767px) {
-  .royal-hero-art { right: -24%; width: 120%; opacity: .4; }
-  .royal-hero-shade { background: linear-gradient(90deg,rgba(11,12,11,.9),rgba(11,12,11,.35)),linear-gradient(0deg,#0b0c0b,transparent 70%); }
+  .royal-hero { min-height: auto; }
+  .royal-hero-art img { object-position: 62% center; }
+  .royal-hero-shade { background: linear-gradient(90deg,rgba(9,9,8,.92),rgba(9,9,8,.52)),linear-gradient(0deg,#0b0c0b 0%,transparent 65%); }
+  .royal-next-event::before { inset: 0 -1.5rem; }
 }
 a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; }
