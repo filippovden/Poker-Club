@@ -59,6 +59,14 @@ sqlite.exec(`
     status TEXT NOT NULL DEFAULT 'pending',
     created_at TEXT NOT NULL DEFAULT (current_timestamp)
   );
+
+  CREATE TABLE IF NOT EXISTS tournament_clocks (
+    tournament_id INTEGER PRIMARY KEY REFERENCES tournaments(id) ON DELETE CASCADE,
+    levels_json TEXT NOT NULL,
+    elapsed_seconds INTEGER NOT NULL DEFAULT 0,
+    running_since TEXT,
+    updated_at TEXT NOT NULL DEFAULT (current_timestamp)
+  );
 `);
 
 // Next's build collects page data across several worker processes that

@@ -2,7 +2,8 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Users, Command as CommandIcon, Copy, PlayCircle, QrCode, Megaphone } from "lucide-react";
+import Link from "next/link";
+import { Plus, Pencil, Trash2, Users, Command as CommandIcon, Copy, PlayCircle, QrCode, Megaphone, MonitorPlay } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -374,6 +375,9 @@ export function DashboardShell({
                     >
                       <PlayCircle className="h-3.5 w-3.5" /> Ход игры
                     </button>
+                    <Link href={`/admin/tournament/${t.id}`} className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--accent)]/40 px-3 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10" title="Таймер и экран для зала">
+                      <MonitorPlay className="h-3.5 w-3.5" /> Пульт и экран
+                    </Link>
                     <button
                       onClick={() => {
                         setCheckinQrTournamentId(t.id);

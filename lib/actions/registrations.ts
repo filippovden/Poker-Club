@@ -10,6 +10,7 @@ import {
   ratingHistory,
   registrations,
   tournamentActions,
+  tournamentClocks,
   tournaments,
   type Registration,
   type Tournament,
@@ -23,6 +24,7 @@ import { planBalancedSeats, shuffle } from "@/lib/tournaments/seating";
 import { computeRatingChange } from "@/lib/tournaments/rating";
 import { normalizePhone } from "@/lib/phone";
 import type { ActionResult } from "@/lib/actions/tournaments";
+import { elapsedAt } from "@/lib/tournament-clock";
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Введите имя").max(120),
@@ -770,6 +772,8 @@ export async function adminFinishTournament(tournamentId: number): Promise<Finis
     // they must never touch the real players/rating tables, or fake test
     // names would show up in the public rating.
     if (tournament.isHidden) {
+      const [clock] = await db.select().from(tournamentClocks).where(eq(tournamentClocks.tournamentId, tournamentId)).limit(1);
+      if (clock?.runningSince) await db.update(tournamentClocks).set({ elapsedSeconds: elapsedAt(Date.now(), clock.elapsedSeconds, clock.runningSince), runningSince: null }).where(eq(tournamentClocks.tournamentId, tournamentId));
       await db.update(tournaments).set({ status: "completed" }).where(eq(tournaments.id, tournamentId));
       revalidatePath("/tournaments");
       revalidatePath("/admin/dashboard");
@@ -779,6 +783,8 @@ export async function adminFinishTournament(tournamentId: number): Promise<Finis
     const result = await applyRatingForTournament(tournamentId);
     if (result.error) return result;
 
+    const [clock] = await db.select().from(tournamentClocks).where(eq(tournamentClocks.tournamentId, tournamentId)).limit(1);
+    if (clock?.runningSince) await db.update(tournamentClocks).set({ elapsedSeconds: elapsedAt(Date.now(), clock.elapsedSeconds, clock.runningSince), runningSince: null }).where(eq(tournamentClocks.tournamentId, tournamentId));
     await db.update(tournaments).set({ status: "completed" }).where(eq(tournaments.id, tournamentId));
 
     revalidatePath("/tournaments");

@@ -42,6 +42,16 @@ export const tournaments = sqliteTable("tournaments", {
 export type Tournament = typeof tournaments.$inferSelect;
 export type NewTournament = typeof tournaments.$inferInsert;
 
+export const tournamentClocks = sqliteTable("tournament_clocks", {
+  tournamentId: integer("tournament_id").primaryKey().references(() => tournaments.id, { onDelete: "cascade" }),
+  levelsJson: text("levels_json").notNull(),
+  elapsedSeconds: integer("elapsed_seconds").notNull().default(0),
+  runningSince: text("running_since"),
+  updatedAt: text("updated_at").notNull().default(sql`(current_timestamp)`),
+});
+
+export type TournamentClock = typeof tournamentClocks.$inferSelect;
+
 export const registrations = sqliteTable("registrations", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   tournamentId: integer("tournament_id")

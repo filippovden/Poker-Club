@@ -3,7 +3,7 @@ import Script from "next/script";
 const THEME_SCRIPT = `
 (function () {
   try {
-    var ageConfirmed = localStorage.getItem("lp-age-confirmed") === "yes";
+    var ageConfirmed = location.pathname.startsWith("/admin/") || localStorage.getItem("lp-age-confirmed") === "yes";
     document.documentElement.setAttribute("data-age-gate", ageConfirmed ? "confirmed" : "pending");
   } catch (e) {}
 })();
