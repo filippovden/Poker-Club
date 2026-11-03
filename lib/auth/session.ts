@@ -1,6 +1,9 @@
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/lib/db/client";
+import { admins } from "@/lib/db/schema";
 
 const COOKIE_NAME = "lp_session";
 const secret = new TextEncoder().encode(
@@ -42,7 +45,9 @@ export async function getSession(): Promise<SessionPayload | null> {
 
   try {
     const { payload } = await jwtVerify(token, secret);
-    return payload as SessionPayload;
+    if (!Number.isSafeInteger(payload.adminId) || typeof payload.username !== "string") return null;
+    const [admin] = await db.select({ id: admins.id }).from(admins).where(and(eq(admins.id, payload.adminId as number), eq(admins.username, payload.username))).limit(1);
+    return admin ? payload as SessionPayload : null;
   } catch {
     return null;
   }

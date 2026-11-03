@@ -11,6 +11,16 @@ const number = (value: number) => value.toLocaleString("ru-RU");
 const clockText = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 const blindText = (level: BlindLevel | null) => !level ? "—" : level.kind === "break" ? "Перерыв" : `${number(level.smallBlind)} / ${number(level.bigBlind)}`;
 
+function secondsToBreak(levels: BlindLevel[], index: number, remainingSeconds: number) {
+  if (levels[index]?.kind === "break") return 0;
+  let seconds = remainingSeconds;
+  for (let i = index + 1; i < levels.length; i++) {
+    if (levels[i].kind === "break") return seconds;
+    seconds += levels[i].minutes * 60;
+  }
+  return null;
+}
+
 function Stage({ title, format, snapshot, elapsedSeconds, screenMode }: {
   title: string;
   format: string;
@@ -20,29 +30,30 @@ function Stage({ title, format, snapshot, elapsedSeconds, screenMode }: {
 }) {
   const position = clockPosition(snapshot.levels, elapsedSeconds);
   const levelNumber = snapshot.levels.slice(0, position.index + 1).filter((level) => level.kind === "play").length;
-  const stateLabel = snapshot.status === "completed" ? "Завершён" : position.finished ? "Структура завершена" : snapshot.running ? "Турнир идёт" : snapshot.status === "upcoming" ? "Ожидание старта" : "Пауза";
+  const stateLabel = snapshot.status === "completed" ? "Завершён" : position.finished ? "Структура завершена" : snapshot.running ? "Идёт игра" : snapshot.status === "upcoming" || elapsedSeconds === 0 ? "Ожидание старта" : "Пауза";
+  const breakIn = secondsToBreak(snapshot.levels, position.index, position.remainingSeconds);
   return <div className={`royal-clock-stage ${screenMode ? "royal-clock-stage-screen" : "royal-clock-stage-control"}`}>
     <div className="royal-clock-photo" aria-hidden="true" />
     <div className="royal-clock-content">
       <header className="royal-clock-header">
-        <div className="flex items-center gap-3 text-[var(--accent)]"><LogoMark className="h-8 w-8 sm:h-10 sm:w-10" /><span className="font-display text-xl font-semibold tracking-tight text-[#f5eee2] sm:text-2xl">Royal63</span></div>
+        <div className="royal-clock-brand"><LogoMark className="h-8 w-8 sm:h-10 sm:w-10" /><span className="font-display text-xl font-semibold tracking-tight text-[#f5eee2] sm:text-2xl">Royal63</span><span className="royal-clock-brand-divider" /><span className="royal-clock-brand-caption">Турнирный экран</span></div>
         <div className="royal-clock-status"><span className={`royal-clock-dot ${snapshot.running ? "royal-clock-dot-live" : ""}`} />{stateLabel}</div>
       </header>
 
       <div className="royal-clock-main">
-        <p className="royal-clock-eyebrow">{format} <span>✦</span> Турнирный вечер</p>
-        <h1 className="royal-editorial royal-clock-title">{title}</h1>
-        <div className="royal-clock-center">
-          <p className="royal-clock-level">{position.level.kind === "break" ? "Перерыв" : `Уровень ${String(levelNumber).padStart(2, "0")}`}</p>
+        <div className="royal-broadcast-heading"><p className="royal-clock-eyebrow">{format}<span className="royal-broadcast-diamond">◆</span>{position.level.kind === "break" ? "Перерыв" : `Уровень ${String(levelNumber).padStart(2, "0")}`}</p><h1 className="royal-clock-title">{title}</h1></div>
+        <div className="royal-broadcast-core">
+          <p className="royal-broadcast-time-label">До конца уровня</p>
           <div className="royal-clock-time" role="timer" aria-label={`До конца уровня ${clockText(position.remainingSeconds)}`}>{clockText(position.remainingSeconds)}</div>
           <div className="royal-clock-time-line" aria-hidden="true"><span style={{ width: `${position.level.minutes > 0 ? 100 * (1 - position.remainingSeconds / (position.level.minutes * 60)) : 0}%` }} /></div>
+          <div className="royal-broadcast-current"><span>{position.level.kind === "break" ? "Сейчас перерыв" : "Текущие блайнды"}</span><strong>{blindText(position.level)}</strong><small>{position.level.kind === "play" && position.level.ante > 0 ? `Анте ${number(position.level.ante)}` : position.level.kind === "break" ? "Следующий уровень уже скоро" : "Малый / большой блайнд"}</small></div>
         </div>
       </div>
 
       <footer className="royal-clock-footer">
-        <div className="royal-clock-stat"><span>Сейчас</span><strong>{blindText(position.level)}</strong><small>{position.level.kind === "play" && position.level.ante > 0 ? `Анте ${number(position.level.ante)}` : position.level.kind === "break" ? "Время передохнуть" : "Малый / большой блайнд"}</small></div>
-        <div className="royal-clock-stat"><span>Далее</span><strong>{blindText(position.next)}</strong><small>{position.next?.kind === "play" && position.next.ante > 0 ? `Анте ${number(position.next.ante)}` : position.next ? `${position.next.minutes} мин` : "Последний уровень"}</small></div>
-        <div className="royal-clock-stat royal-clock-stat-players"><span>Игроки</span><strong>{snapshot.remainingPlayers}<em> / {snapshot.totalPlayers}</em></strong><small>В игре / всего</small></div>
+        <div className="royal-clock-stat"><span>Следующий уровень</span><strong>{blindText(position.next)}</strong><small>{position.next?.kind === "play" && position.next.ante > 0 ? `Анте ${number(position.next.ante)}` : position.next ? `${position.next.minutes} минут` : "Последний уровень"}</small></div>
+        <div className="royal-clock-stat royal-clock-stat-players"><span>Игроки в игре</span><strong>{snapshot.remainingPlayers}<em> / {snapshot.totalPlayers}</em></strong><small>Осталось / всего</small></div>
+        <div className="royal-clock-stat royal-clock-stat-break"><span>До перерыва</span><strong>{breakIn === null ? "—" : breakIn === 0 ? "Сейчас" : clockText(breakIn)}</strong><small>{breakIn === null ? "Перерывов нет" : "По структуре турнира"}</small></div>
       </footer>
     </div>
   </div>;
