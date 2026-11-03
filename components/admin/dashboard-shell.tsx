@@ -15,7 +15,7 @@ import { LiveTournamentDialog } from "./live-tournament-dialog";
 import { CheckinQrDialog } from "./checkin-qr-dialog";
 import { AnnouncementDialog } from "./announcement-dialog";
 import { StatsPanel } from "./stats-panel";
-import type { TournamentStatsRow, PlayerStatsRow } from "@/lib/db/stats";
+import type { TournamentStatsRow, PlayerStatsRow, TournamentLedgerRow } from "@/lib/db/stats";
 import {
   createTournamentAction,
   updateTournamentAction,
@@ -45,6 +45,7 @@ export function DashboardShell({
   statusCounts = {},
   tournamentStats = [],
   playerStats = [],
+  ledger = [],
 }: {
   tournaments: Tournament[];
   news: NewsArticle[];
@@ -52,6 +53,7 @@ export function DashboardShell({
   statusCounts?: Record<number, { pending: number; approved: number; rejected: number }>;
   tournamentStats?: TournamentStatsRow[];
   playerStats?: PlayerStatsRow[];
+  ledger?: TournamentLedgerRow[];
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<"tournaments" | "news" | "stats">("tournaments");
@@ -222,17 +224,17 @@ export function DashboardShell({
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto max-w-6xl px-6 py-10">
       <CommandPalette
         onNewTournament={openNewTournament}
         onNewNews={openNewNews}
         onTabChange={setTab}
       />
 
-      <header className="mb-10 flex items-center justify-between">
+      <header className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <LogoMark className="h-6 w-6 text-[var(--foreground)]" />
-          <span className="font-display text-sm font-medium">Панель организатора</span>
+          <span className="font-display text-lg font-semibold">Royal63 · управление</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden text-xs text-[var(--muted-foreground)] sm:inline">
@@ -254,12 +256,20 @@ export function DashboardShell({
         </div>
       </header>
 
+      <div className="mb-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">Рабочее место организатора</p>
+        <h1 className="font-display mt-2 text-2xl font-semibold sm:text-3xl">Турниры, игроки и результаты</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">
+          Создайте турнир, обработайте заявки, отметьте пришедших, проведите игру и зафиксируйте места. Учёт и рейтинг обновятся после завершения.
+        </p>
+      </div>
+
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <div className="mb-6 flex items-center justify-between">
           <TabsList>
             <TabsTrigger value="tournaments">Турниры</TabsTrigger>
             <TabsTrigger value="news">Новости</TabsTrigger>
-            <TabsTrigger value="stats">Статистика</TabsTrigger>
+            <TabsTrigger value="stats">Учёт и рейтинг</TabsTrigger>
           </TabsList>
           {tab !== "stats" && (
             <Button
@@ -341,28 +351,28 @@ export function DashboardShell({
                       </p>
                     </div>
                   </div>
-                  <div className="flex shrink-0 gap-1 self-end sm:self-auto">
+                  <div className="flex flex-wrap gap-2 self-end sm:self-auto">
                     <button
                       onClick={() => {
                         setRegistrationsTournamentId(t.id);
                         setRegistrationsDialogOpen(true);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-xs font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]"
                       aria-label="Заявки"
                       title="Заявки"
                     >
-                      <Users className="h-3.5 w-3.5" />
+                      <Users className="h-3.5 w-3.5" /> Заявки
                     </button>
                     <button
                       onClick={() => {
                         setLiveTournamentId(t.id);
                         setLiveDialogOpen(true);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-xs font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]"
                       aria-label="Ход турнира"
                       title="Ход турнира"
                     >
-                      <PlayCircle className="h-3.5 w-3.5" />
+                      <PlayCircle className="h-3.5 w-3.5" /> Ход игры
                     </button>
                     <button
                       onClick={() => {
@@ -468,7 +478,7 @@ export function DashboardShell({
         </TabsContent>
 
         <TabsContent value="stats">
-          <StatsPanel tournamentStats={tournamentStats} playerStats={playerStats} />
+          <StatsPanel tournamentStats={tournamentStats} playerStats={playerStats} ledger={ledger} />
         </TabsContent>
       </Tabs>
 

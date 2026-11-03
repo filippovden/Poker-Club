@@ -15,6 +15,7 @@ import {
   buildAdminCancelledMessage,
   buildAdminSearchResultsMessage,
   buildApplicationSummaryMessage,
+  buildHelpMessage,
   buildMyRegistrationsMessage,
   buildNextTournamentMessage,
   buildParticipantsListMessage,
@@ -562,7 +563,7 @@ async function handleAdminMessage(chatId: number, text: string) {
     await sendTelegramMessage(chatId, "Введите имя, телефон, @username или Telegram ID игрока:");
     return;
   }
-  if (/^\/start\b/.test(text)) {
+  if (/^\/(start|help)\b/.test(text)) {
     await sendTelegramMessage(chatId, "Меню организатора Royal63.", {
       replyKeyboard: ADMIN_MENU_KEYBOARD,
     });
@@ -601,6 +602,14 @@ async function handleMessage(update: TelegramUpdate) {
     await handleCancelCommand(chatId);
     return;
   }
+  if (/^\/status\b/.test(text)) {
+    await handleMyRegistrations(chatId);
+    return;
+  }
+  if (/^\/tournaments\b/.test(text)) {
+    await handleNextTournamentInfo(chatId);
+    return;
+  }
   if (text === MENU_LABELS.myRegistrations) {
     await handleMyRegistrations(chatId);
     return;
@@ -611,6 +620,10 @@ async function handleMessage(update: TelegramUpdate) {
   }
   if (text === MENU_LABELS.apply) {
     await handleApplyMenu(chatId);
+    return;
+  }
+  if (text === MENU_LABELS.help || /^\/help\b/.test(text)) {
+    await sendTelegramMessage(chatId, buildHelpMessage(), { replyKeyboard: MAIN_MENU_KEYBOARD });
     return;
   }
 
@@ -676,6 +689,11 @@ async function handleCancelCallback(
     return;
   }
 
+  if (registration.status === "playing" || registration.status === "eliminated") {
+    await answerCallbackQuery(query.id, "Турнир уже начался — обратитесь к организатору");
+    return;
+  }
+
   await db.delete(registrations).where(eq(registrations.id, id));
   await answerCallbackQuery(query.id, "Отозвано");
   await editMessageText(chatId, query.message.message_id, "✅ Заявка отозвана.", {
@@ -732,6 +750,11 @@ async function handleAdminCancelCallback(
   const [registration] = await db.select().from(registrations).where(eq(registrations.id, id)).limit(1);
   if (!registration) {
     await answerCallbackQuery(query.id, "Заявка не найдена");
+    return;
+  }
+
+  if (registration.status === "playing" || registration.status === "eliminated") {
+    await answerCallbackQuery(query.id, "Турнир уже начался — используйте панель организатора");
     return;
   }
 

@@ -19,7 +19,12 @@ export const metadata: Metadata = {
 export const revalidate = 0;
 
 export default async function RatingPage() {
-  const ranked = await db.select().from(players).orderBy(desc(players.rating));
+  const ranked = await db.select({
+    id: players.id,
+    name: players.name,
+    rating: players.rating,
+    tournamentsPlayed: players.tournamentsPlayed,
+  }).from(players).orderBy(desc(players.rating));
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-28 sm:py-32">

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "./client";
 import { players, ratingHistory, registrations, tournaments } from "./schema";
 
@@ -14,6 +14,50 @@ export interface TournamentStatsRow {
   totalAddons: number;
   rebuyAddonMoney: number;
   totalCash: number | null;
+}
+
+export interface TournamentLedgerRow {
+  registrationId: number;
+  tournamentId: number;
+  tournamentTitle: string;
+  startsAt: string;
+  playerName: string;
+  phone: string;
+  status: string;
+  checkedIn: boolean;
+  tableNumber: number | null;
+  seatNumber: number | null;
+  place: number | null;
+  buyIn: number | null;
+  rebuyCount: number;
+  addonCount: number;
+  rebuyAddonMoney: number;
+  paymentMethod: string | null;
+}
+
+// Private operational ledger. The public rating pages never receive
+// phones, payment information, or these individual ledger rows.
+export async function getTournamentLedger(): Promise<TournamentLedgerRow[]> {
+  // sqlite-proxy currently maps joined rows by column name and loses values
+  // when two tables share columns such as id/status/created_at. Read each
+  // table separately and join the small club dataset in memory.
+  const [allRegistrations, visibleTournaments] = await Promise.all([
+    db.select().from(registrations),
+    db.select().from(tournaments).where(eq(tournaments.isHidden, false)),
+  ]);
+  const tournamentById = new Map(visibleTournaments.map((t) => [t.id, t]));
+  return allRegistrations.flatMap((r): TournamentLedgerRow[] => {
+    const t = tournamentById.get(r.tournamentId);
+    if (!t) return [];
+    return [{
+      registrationId: r.id, tournamentId: t.id, tournamentTitle: t.title,
+      startsAt: t.startsAt, playerName: r.name, phone: r.phone,
+      status: r.status, checkedIn: r.checkedIn, tableNumber: r.tableNumber,
+      seatNumber: r.seatNumber, place: r.place, buyIn: t.buyIn,
+      rebuyCount: r.rebuyCount, addonCount: r.addonCount,
+      rebuyAddonMoney: r.totalSpent, paymentMethod: r.paymentMethod,
+    }];
+  }).sort((a, b) => b.startsAt.localeCompare(a.startsAt) || a.playerName.localeCompare(b.playerName, "ru"));
 }
 
 // Test tournaments (is_hidden) are excluded outright — their fake rebuys
@@ -82,48 +126,40 @@ export interface PlayerStatsRow {
 // links registrations.player_id) contribute here — a still-live tournament
 // has no finished places yet, so it can't affect these totals.
 export async function getPlayerStats(): Promise<PlayerStatsRow[]> {
-  const rows = await db
-    .select({
-      playerId: players.id,
-      name: players.name,
-      phone: players.phone,
-      rating: players.rating,
-      tournamentsPlayed: players.tournamentsPlayed,
-      rebuyCount: registrations.rebuyCount,
-      addonCount: registrations.addonCount,
-      totalSpent: registrations.totalSpent,
-      buyIn: tournaments.buyIn,
-      place: registrations.place,
-      tournamentTitle: tournaments.title,
-    })
-    .from(registrations)
-    .innerJoin(players, eq(registrations.playerId, players.id))
-    .innerJoin(tournaments, eq(registrations.tournamentId, tournaments.id))
-    .where(and(eq(tournaments.isHidden, false), isNotNull(registrations.playerId)));
+  const [rows, allPlayers, visibleTournaments] = await Promise.all([
+    db.select().from(registrations).where(isNotNull(registrations.playerId)),
+    db.select().from(players),
+    db.select().from(tournaments).where(eq(tournaments.isHidden, false)),
+  ]);
+  const playerById = new Map(allPlayers.map((p) => [p.id, p]));
+  const tournamentById = new Map(visibleTournaments.map((t) => [t.id, t]));
 
   const byPlayer = new Map<number, PlayerStatsRow>();
   for (const r of rows) {
-    let entry = byPlayer.get(r.playerId);
+    const player = playerById.get(r.playerId!);
+    const tournament = tournamentById.get(r.tournamentId);
+    if (!player || !tournament) continue;
+    let entry = byPlayer.get(player.id);
     if (!entry) {
       entry = {
-        playerId: r.playerId,
-        name: r.name,
-        phone: r.phone,
-        rating: r.rating,
-        tournamentsPlayed: r.tournamentsPlayed,
+        playerId: player.id,
+        name: player.name,
+        phone: player.phone,
+        rating: player.rating,
+        tournamentsPlayed: player.tournamentsPlayed,
         totalRebuys: 0,
         totalAddons: 0,
         rebuyAddonMoney: 0,
         totalBuyIns: 0,
         finishes: [],
       };
-      byPlayer.set(r.playerId, entry);
+      byPlayer.set(player.id, entry);
     }
     entry.totalRebuys += r.rebuyCount;
     entry.totalAddons += r.addonCount;
     entry.rebuyAddonMoney += r.totalSpent;
-    entry.totalBuyIns += r.buyIn ?? 0;
-    if (r.place != null) entry.finishes.push({ tournamentTitle: r.tournamentTitle, place: r.place });
+    entry.totalBuyIns += tournament.buyIn ?? 0;
+    if (r.place != null) entry.finishes.push({ tournamentTitle: tournament.title, place: r.place });
   }
 
   return [...byPlayer.values()].sort((a, b) => b.rating - a.rating);
@@ -162,19 +198,20 @@ export async function getPlayerProfile(playerId: number): Promise<PlayerProfile 
   const ranked = await db.select({ id: players.id }).from(players).orderBy(desc(players.rating));
   const rankIndex = ranked.findIndex((p) => p.id === playerId);
 
-  const historyRows = await db
-    .select({
-      tournamentId: tournaments.id,
-      tournamentTitle: tournaments.title,
-      startsAt: tournaments.startsAt,
-      place: ratingHistory.place,
-      pointsEarned: ratingHistory.pointsEarned,
-      newRating: ratingHistory.newRating,
-    })
-    .from(ratingHistory)
-    .innerJoin(tournaments, eq(ratingHistory.tournamentId, tournaments.id))
-    .where(eq(ratingHistory.playerId, playerId))
-    .orderBy(desc(tournaments.startsAt));
+  const [history, allTournaments] = await Promise.all([
+    db.select().from(ratingHistory).where(eq(ratingHistory.playerId, playerId)),
+    db.select().from(tournaments),
+  ]);
+  const tournamentById = new Map(allTournaments.map((t) => [t.id, t]));
+  const historyRows = history.flatMap((h): PlayerProfileHistoryRow[] => {
+    const tournament = tournamentById.get(h.tournamentId);
+    if (!tournament) return [];
+    return [{
+      tournamentId: tournament.id, tournamentTitle: tournament.title,
+      startsAt: tournament.startsAt, place: h.place,
+      pointsEarned: h.pointsEarned, newRating: h.newRating,
+    }];
+  }).sort((a, b) => b.startsAt.localeCompare(a.startsAt));
 
   const bestPlace = historyRows.length > 0 ? Math.min(...historyRows.map((h) => h.place)) : null;
 

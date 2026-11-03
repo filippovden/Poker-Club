@@ -131,12 +131,25 @@ export const MENU_LABELS = {
   myRegistrations: "📋 Мои заявки",
   nextTournament: "🃏 Ближайший турнир",
   apply: "✍️ Подать заявку",
+  help: "ℹ️ Как это работает",
 } as const;
 
 export const MAIN_MENU_KEYBOARD = [
   [MENU_LABELS.nextTournament, MENU_LABELS.apply],
   [MENU_LABELS.myRegistrations],
+  [MENU_LABELS.help],
 ];
+
+export function buildHelpMessage() {
+  return (
+    "<b>Royal63 — помощь</b>\n\n" +
+    "1. Выберите турнир и отправьте имя и телефон.\n" +
+    "2. Организатор рассмотрит заявку. Статус появится в «Мои заявки».\n" +
+    "3. Если место подтверждено, бот пришлёт напоминание и информацию о рассадке.\n\n" +
+    "Проверить заявку можно через «Мои заявки» или /status. Отменить — через /cancel до начала игры. " +
+    "Если возник вопрос, свяжитесь с клубом по телефону " + escapeHtml(SITE_CONTENT.contacts.phone) + "."
+  );
+}
 
 // The admin (staff) chat gets its own menu, entirely separate from the
 // player-facing one above — different chat, different job.

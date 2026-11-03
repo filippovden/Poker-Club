@@ -1,226 +1,56 @@
-"use client";
-
-import { useRef } from "react";
 import Link from "next/link";
-import {
-  motion,
-  useScroll,
-  useTransform,
-  useReducedMotion,
-} from "motion/react";
+import Image from "next/image";
+import { and, asc, eq } from "drizzle-orm";
+import { db } from "@/lib/db/client";
+import { tournaments } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { MagneticWrapper } from "@/components/magnetic";
 
-const EASE = [0.16, 1, 0.3, 1] as const;
-const VIDEO_URL = "/brand/hero-royal63-table.mp4";
-
-const HEADLINE_LINE_1 = ["Честная", "игра."];
-const HEADLINE_LINE_2 = ["Только", "для", "своих."];
-
-const PARTICLES = [
-  { left: "8%", size: 3, duration: 14, delay: 0, opacity: 0.5 },
-  { left: "18%", size: 2, duration: 18, delay: 3, opacity: 0.35 },
-  { left: "29%", size: 4, duration: 16, delay: 6, opacity: 0.4 },
-  { left: "41%", size: 2, duration: 20, delay: 1, opacity: 0.3 },
-  { left: "54%", size: 3, duration: 15, delay: 8, opacity: 0.45 },
-  { left: "63%", size: 2, duration: 19, delay: 4, opacity: 0.3 },
-  { left: "74%", size: 4, duration: 17, delay: 10, opacity: 0.4 },
-  { left: "85%", size: 3, duration: 13, delay: 2, opacity: 0.5 },
-  { left: "92%", size: 2, duration: 21, delay: 7, opacity: 0.3 },
-];
-
-const container = {
-  hidden: {},
-  show: {
-    transition: { staggerChildren: 0.09, delayChildren: 0.7 },
-  },
-};
-
-const word = {
-  hidden: { y: "110%", opacity: 0 },
-  show: {
-    y: "0%",
-    opacity: 1,
-    transition: { duration: 0.9, ease: EASE },
-  },
-};
-
-export function Hero() {
-  const ref = useRef<HTMLDivElement>(null);
-  const prefersReducedMotion = useReducedMotion();
-
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
+export async function Hero() {
+  const [next] = await db.select().from(tournaments)
+    .where(and(eq(tournaments.status, "upcoming"), eq(tournaments.isHidden, false)))
+    .orderBy(asc(tournaments.startsAt)).limit(1);
+  const date = next && new Date(next.startsAt).toLocaleString("ru-RU", {
+    timeZone: "Europe/Samara", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
   });
 
-  const videoY = useTransform(
-    scrollYProgress,
-    [0, 1],
-    prefersReducedMotion ? ["0%", "0%"] : ["0%", "22%"],
-  );
-  const contentOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
-
   return (
-    <section
-      ref={ref}
-      className="relative flex h-[100svh] min-h-[560px] w-full flex-col overflow-hidden bg-black"
-    >
-      <motion.div
-        style={{ y: videoY }}
-        className="absolute inset-0 scale-[1.15]"
-        initial={{ opacity: 0, scale: 1.25 }}
-        animate={{ opacity: 1, scale: 1.15 }}
-        transition={{ duration: 2, ease: EASE }}
-      >
-        <video
-          className="h-full w-full object-cover opacity-70"
-          src={VIDEO_URL}
-          poster="/hero-poster.jpg"
-          autoPlay
-          muted
-          loop
-          playsInline
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-          }}
-        />
-      </motion.div>
-
-      <motion.div
-        aria-hidden="true"
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(60% 55% at 50% 78%, rgba(201,162,39,0.22) 0%, rgba(201,162,39,0.08) 35%, transparent 65%)",
-        }}
-        animate={
-          prefersReducedMotion
-            ? undefined
-            : { opacity: [0.6, 1, 0.6] }
-        }
-        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(120% 100% at 50% 100%, transparent 30%, rgba(0,0,0,0.55) 70%, #000 100%), linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 30%, rgba(0,0,0,0.35) 70%, #000 100%)",
-        }}
-      />
-      <div className="grain absolute inset-0" />
-
-      <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
-        {PARTICLES.map((p, i) => (
-          <span
-            key={i}
-            className="ambient-particle"
-            style={{
-              left: p.left,
-              bottom: "-10%",
-              width: p.size,
-              height: p.size,
-              animationDuration: `${p.duration}s`,
-              animationDelay: `${p.delay}s`,
-              ["--particle-opacity" as string]: p.opacity,
-            }}
-          />
-        ))}
+    <section className="relative overflow-hidden border-b border-[var(--border)] bg-[radial-gradient(ellipse_at_78%_35%,rgba(212,170,84,0.12),transparent_42%),linear-gradient(145deg,#11100e,#0b0a09)] pt-28 sm:pt-36">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(212,170,84,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(212,170,84,.08)_1px,transparent_1px)] [background-size:72px_72px] [mask-image:linear-gradient(to_right,transparent,black)]" />
+      <div className="mx-auto grid max-w-6xl gap-10 px-6 pb-16 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:gap-16 lg:pb-24">
+        <div className="relative z-10">
+          <p className="mb-6 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Покерный клуб · Тольятти</p>
+          <h1 className="font-display max-w-3xl text-[clamp(2.6rem,6vw,5.4rem)] font-semibold leading-[1.05] tracking-[-0.055em]">
+            Игра начинается <span className="text-[var(--accent)]">здесь.</span>
+          </h1>
+          <p className="mt-7 max-w-xl text-base leading-relaxed text-[var(--muted-foreground)] sm:text-lg">
+            Выберите турнир, оставьте заявку и следите за результатами клуба. Всё важное для игрока — в одном месте.
+          </p>
+          <div className="mt-9 flex flex-wrap gap-3">
+            <Button asChild size="lg"><Link href="/tournaments">Выбрать турнир <span aria-hidden="true">↗</span></Link></Button>
+            <Button asChild size="lg" variant="outline"><Link href="/registration/status">Проверить заявку</Link></Button>
+          </div>
+          <div className="mt-12 grid max-w-xl grid-cols-2 gap-5 border-t border-[var(--border)] pt-6 text-sm sm:grid-cols-3">
+            <div><strong className="block">Расписание</strong><span className="text-[var(--muted-foreground)]">и запись онлайн</span></div>
+            <div><strong className="block">Результаты</strong><span className="text-[var(--muted-foreground)]">после турнира</span></div>
+            <div className="col-span-2 sm:col-span-1"><strong className="block">Рейтинг</strong><span className="text-[var(--muted-foreground)]">игроков клуба</span></div>
+          </div>
+        </div>
+        <div className="relative min-h-[360px] overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[#17130e] shadow-[0_32px_90px_-38px_rgba(212,170,84,0.25)] sm:min-h-[500px]">
+          <Image src="/brand/royal63-card-full.jpg" alt="Игральная карта Royal63" fill priority className="hero-card-art object-cover opacity-90" sizes="(min-width: 1024px) 45vw, 100vw" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0d0b08]/95 via-[#0d0b08]/15 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8">
+            <p className="text-xs uppercase tracking-[0.16em] text-white/70">Ближайший турнир</p>
+            {next ? <>
+              <h2 className="mt-2 font-display text-2xl font-semibold">{next.title}</h2>
+              <p className="mt-2 text-sm text-white/80">{date} · {next.format}{next.buyIn != null ? ` · ${next.buyIn.toLocaleString("ru-RU")} ₽` : ""}</p>
+              <Link href="/tournaments" className="mt-5 inline-block rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-foreground)] hover:brightness-110">Посмотреть и записаться ↗</Link>
+            </> : <>
+              <h2 className="mt-2 font-display text-2xl font-semibold">Скоро за столом</h2>
+              <p className="mt-2 text-sm text-white/80">Новые даты появятся в расписании.</p>
+            </>}
+          </div>
+        </div>
       </div>
-
-      <motion.div
-        style={{ opacity: contentOpacity }}
-        className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-end px-6 pb-16 sm:pb-24"
-      >
-        <motion.div
-          initial={{ y: 16, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.4, ease: EASE }}
-          className="mb-6"
-        >
-          <Badge variant="accent">Закрытый клуб</Badge>
-        </motion.div>
-
-        <h1 className="font-display max-w-3xl text-[clamp(2.5rem,8vw,5.5rem)] font-medium leading-[0.95] tracking-tight text-white">
-          <span className="block overflow-hidden">
-            <motion.span
-              variants={container}
-              initial="hidden"
-              animate="show"
-              className="inline-flex flex-wrap gap-x-4"
-            >
-              {HEADLINE_LINE_1.map((w, i) => (
-                <span key={i} className="overflow-hidden py-1">
-                  <motion.span variants={word} className="inline-block">
-                    {w}
-                  </motion.span>
-                </span>
-              ))}
-            </motion.span>
-          </span>
-          <span className="block overflow-hidden text-[var(--accent)]">
-            <motion.span
-              variants={container}
-              initial="hidden"
-              animate="show"
-              className="inline-flex flex-wrap gap-x-4"
-            >
-              {HEADLINE_LINE_2.map((w, i) => (
-                <span key={i} className="overflow-hidden py-1">
-                  <motion.span variants={word} className="inline-block">
-                    {w}
-                  </motion.span>
-                </span>
-              ))}
-            </motion.span>
-          </span>
-        </h1>
-
-        <motion.p
-          initial={{ y: 16, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 1.3, ease: EASE }}
-          className="mt-6 max-w-md text-balance text-base text-white/70 sm:text-lg"
-        >
-          Живые турниры по No-Limit Hold&apos;em и Pot-Limit Omaha каждую
-          неделю. Честная игра, профессиональные дилеры, атмосфера
-          закрытого зала.
-        </motion.p>
-
-        <motion.div
-          initial={{ y: 16, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 1.5, ease: EASE }}
-          className="mt-9 flex flex-wrap gap-3"
-        >
-          <MagneticWrapper>
-            <Button asChild size="lg">
-              <Link href="/tournaments">Смотреть турниры</Link>
-            </Button>
-          </MagneticWrapper>
-          <MagneticWrapper>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-white/25 text-white hover:border-[var(--accent)] hover:text-[var(--accent)]"
-            >
-              <Link href="/about">О клубе</Link>
-            </Button>
-          </MagneticWrapper>
-        </motion.div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1, delay: 2 }}
-        className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-[11px] uppercase tracking-[0.2em] text-white/40"
-      >
-        Прокрутите вниз
-      </motion.div>
     </section>
   );
 }

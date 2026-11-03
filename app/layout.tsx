@@ -3,7 +3,6 @@ import { Inter, Unbounded } from "next/font/google";
 import "./globals.css";
 import { ThemeScript } from "@/components/theme-script";
 import { Analytics } from "@/components/analytics";
-import { AmbientParticles } from "@/components/ambient-particles";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import { AgeGate } from "@/components/age-gate";
 import { ScrollToTop } from "@/components/scroll-to-top";
@@ -85,7 +84,7 @@ const localBusinessJsonLd = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0908",
+  themeColor: "#0d0c0b",
 };
 
 export default function RootLayout({
@@ -110,7 +109,6 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
-        <AmbientParticles />
         <AgeGate />
         <ServiceWorkerRegister />
         {children}

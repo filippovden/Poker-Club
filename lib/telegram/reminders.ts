@@ -37,11 +37,12 @@ export async function checkReminders() {
       if (hoursUntil > threshold.hours) continue;
       if (registration[threshold.field]) continue;
 
-      await sendTelegramMessage(
+      const sent = await sendTelegramMessage(
         registration.telegramChatId!,
         buildReminderMessage(tournament, threshold.phrase),
         { buttons: buildReminderButtons(registration.id) },
       );
+      if (!sent) continue;
       await db
         .update(registrations)
         .set({ [threshold.field]: true })
