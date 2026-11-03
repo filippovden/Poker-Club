@@ -19,7 +19,7 @@ async function main() {
   };
   try {
     const { db } = await import('../lib/db/client');
-    const { tournaments, registrations } = await import('../lib/db/schema');
+    const { tournaments, registrations, players, ratingHistory } = await import('../lib/db/schema');
     const { eq } = await import('drizzle-orm');
     const { handleUpdate } = await import('../lib/telegram/bot');
     const { createRegistration } = await import('../lib/registrations/create');
@@ -58,6 +58,16 @@ async function main() {
     assert.equal((await db.select().from(registrations)).length,1,'stale cancellation cannot delete playing registration');
     await msg('/status');
     assert(sent.some(x=>/Стол 2, место 5/.test(x.body.text??'')));
+    await msg('/profile');
+    assert.match(sent.at(-1)?.body.text,/после первого завершённого турнира/);
+    const [player] = await db.insert(players).values({phone:'+79990000001',name:'Анна <Royal63>',telegramChatId:'123',rating:1042,tournamentsPlayed:1}).returning();
+    await db.insert(ratingHistory).values({playerId:player.id,tournamentId:t.id,oldRating:1000,newRating:1042,place:1,pointsEarned:42});
+    await msg('/rating');
+    assert.match(sent.at(-1)?.body.text,/Анна &lt;Royal63&gt;/);
+    assert.doesNotMatch(sent.at(-1)?.body.text,/79990000001/);
+    await msg('/profile');
+    assert.match(sent.at(-1)?.body.text,/1042 очков/);
+    assert.match(sent.at(-1)?.body.text,/1-е место, \+42 очков/);
     assert.match(buildMyRegistrationsMessage([{tournament:t,status:'eliminated',place:3}]),/Итоговое место: 3/);
     await db.update(registrations).set({status:'pending'}).where(eq(registrations.id,rows[0].id));
     await cb(`cancel_confirm:${rows[0].id}`);
@@ -68,7 +78,7 @@ async function main() {
     const before = sent.length;
     await handleUpdate({update_id:4,message:{chat:{id:-123,type:'group'},text:'/start'}});
     assert.equal(sent.length,before,'private flow does not run in a group');
-    console.log('PASS: application, contact sharing, validation, stale buttons, cancellation, duplicate identity, hidden tournaments, seating and group isolation');
+    console.log('PASS: application, contact sharing, validation, stale buttons, cancellation, duplicate identity, hidden tournaments, seating, rating/profile and group isolation');
   } finally {
     globalThis.fetch = originalFetch;
     process.chdir(originalCwd);

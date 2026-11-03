@@ -131,6 +131,8 @@ export const MENU_LABELS = {
   myRegistrations: "📋 Мои заявки",
   nextTournament: "🃏 Ближайший турнир",
   apply: "✍️ Подать заявку",
+  myRating: "👤 Мой рейтинг",
+  rating: "🏆 Рейтинг клуба",
   help: "ℹ️ Как это работает",
   tournaments: "🗓 Все турниры",
   menu: "↩️ В меню",
@@ -139,6 +141,7 @@ export const MENU_LABELS = {
 export const MAIN_MENU_KEYBOARD = [
   [MENU_LABELS.nextTournament, MENU_LABELS.apply],
   [MENU_LABELS.myRegistrations, MENU_LABELS.tournaments],
+  [MENU_LABELS.myRating, MENU_LABELS.rating],
   [MENU_LABELS.help],
 ];
 
@@ -149,6 +152,7 @@ export function buildHelpMessage() {
     "2. Организатор рассмотрит заявку. Статус появится в «Мои заявки».\n" +
     "3. Если место подтверждено, бот пришлёт напоминание и информацию о рассадке.\n\n" +
     "Проверить заявку можно через «Мои заявки» или /status. Отменить — через /cancel до начала игры. " +
+    "Личный результат — /profile, лидеры клуба — /rating. " +
     "Если возник вопрос, свяжитесь с клубом по телефону " + escapeHtml(SITE_CONTENT.contacts.phone) + "."
   );
 }

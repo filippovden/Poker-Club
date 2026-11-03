@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Maximize2, MonitorPlay, Pause, Play, RotateCcw, Save, SkipBack, SkipForward, Plus, Trash2 } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { changeClock, getClockSnapshot, saveBlindLevels, type ClockSnapshot, type ClockCommand } from "@/lib/actions/tournament-clock";
-import { clockPosition, type BlindLevel } from "@/lib/tournament-clock";
+import { blindPreset, clockPosition, totalSeconds, type BlindLevel, type BlindPreset } from "@/lib/tournament-clock";
 
 const number = (value: number) => value.toLocaleString("ru-RU");
 const clockText = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
@@ -32,7 +32,7 @@ function Stage({ title, format, snapshot, elapsedSeconds, screenMode }: {
   const levelNumber = snapshot.levels.slice(0, position.index + 1).filter((level) => level.kind === "play").length;
   const stateLabel = snapshot.status === "completed" ? "Завершён" : position.finished ? "Структура завершена" : snapshot.running ? "Идёт игра" : snapshot.status === "upcoming" || elapsedSeconds === 0 ? "Ожидание старта" : "Пауза";
   const breakIn = secondsToBreak(snapshot.levels, position.index, position.remainingSeconds);
-  return <div className={`royal-clock-stage ${screenMode ? "royal-clock-stage-screen" : "royal-clock-stage-control"}`}>
+  return <div className={`royal-clock-stage ${screenMode ? "royal-clock-stage-screen" : "royal-clock-stage-control"} ${position.level.kind === "break" ? "royal-clock-is-break" : ""} ${position.remainingSeconds <= 60 && !position.finished ? "royal-clock-last-minute" : ""}`}>
     <div className="royal-clock-photo" aria-hidden="true" />
     <div className="royal-clock-content">
       <header className="royal-clock-header">
@@ -43,8 +43,8 @@ function Stage({ title, format, snapshot, elapsedSeconds, screenMode }: {
       <div className="royal-clock-main">
         <div className="royal-broadcast-heading"><p className="royal-clock-eyebrow">{format}<span className="royal-broadcast-diamond">◆</span>{position.level.kind === "break" ? "Перерыв" : `Уровень ${String(levelNumber).padStart(2, "0")}`}</p><h1 className="royal-clock-title">{title}</h1></div>
         <div className="royal-broadcast-core">
-          <p className="royal-broadcast-time-label">До конца уровня</p>
-          <div className="royal-clock-time" role="timer" aria-label={`До конца уровня ${clockText(position.remainingSeconds)}`}>{clockText(position.remainingSeconds)}</div>
+          <p className="royal-broadcast-time-label">{position.level.kind === "break" ? "До конца перерыва" : "До конца уровня"}</p>
+          <div className="royal-clock-time" role="timer" aria-label={`${position.level.kind === "break" ? "До конца перерыва" : "До конца уровня"} ${clockText(position.remainingSeconds)}`}>{clockText(position.remainingSeconds)}</div>
           <div className="royal-clock-time-line" aria-hidden="true"><span style={{ width: `${position.level.minutes > 0 ? 100 * (1 - position.remainingSeconds / (position.level.minutes * 60)) : 0}%` }} /></div>
           <div className="royal-broadcast-current"><span>{position.level.kind === "break" ? "Сейчас перерыв" : "Текущие блайнды"}</span><strong>{blindText(position.level)}</strong><small>{position.level.kind === "play" && position.level.ante > 0 ? `Анте ${number(position.level.ante)}` : position.level.kind === "break" ? "Следующий уровень уже скоро" : "Малый / большой блайнд"}</small></div>
         </div>
@@ -62,6 +62,13 @@ function Stage({ title, format, snapshot, elapsedSeconds, screenMode }: {
 function LevelEditor({ levels, onChange, disabled }: { levels: BlindLevel[]; onChange: (levels: BlindLevel[]) => void; disabled: boolean }) {
   function update(index: number, changes: Partial<BlindLevel>) { onChange(levels.map((level, i) => i === index ? { ...level, ...changes } : level)); }
   return <div className="space-y-2 overflow-x-auto">
+    <div className="mb-5 flex flex-wrap items-center gap-2">
+      <span className="mr-1 text-xs text-[#a79d8e]">Готовая структура</span>
+      {([ ["turbo", "Турбо · 10 мин"], ["standard", "Стандарт · 20 мин"], ["deep", "Дипстек · 30 мин"] ] as const).map(([key, label]) =>
+        <button key={key} type="button" disabled={disabled} onClick={() => onChange(blindPreset(key as BlindPreset))} className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#e8dac3] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40">{label}</button>
+      )}
+      <span className="ml-auto text-xs text-[#a79d8e]">Этапов: {levels.length} · {Math.round(totalSeconds(levels) / 60)} мин</span>
+    </div>
     <div className="grid min-w-[590px] grid-cols-[2.5rem_1.2fr_1fr_1fr_1fr_1fr_2.5rem] gap-2 px-2 text-center text-[10px] uppercase tracking-[.12em] text-[#8d8375]"><span /> <span>Тип</span><span>SB</span><span>BB</span><span>Анте</span><span>Мин.</span><span /></div>
     {levels.map((level, index) => <div key={index} className="grid min-w-[590px] grid-cols-[2.5rem_1.2fr_1fr_1fr_1fr_1fr_2.5rem] items-center gap-2 rounded-xl border border-white/10 bg-white/[.025] p-2 text-xs">
       <span className="text-center font-medium text-[var(--accent)]">{String(index + 1).padStart(2, "0")}</span>
@@ -72,7 +79,8 @@ function LevelEditor({ levels, onChange, disabled }: { levels: BlindLevel[]; onC
       <input aria-label={`Минуты уровня ${index + 1}`} type="number" min="1" max="120" value={level.minutes} disabled={disabled} onChange={(event) => update(index, { minutes: Number(event.target.value) })} className="min-w-0 rounded-lg border border-white/10 bg-[#171714] px-2 py-2" />
       <button type="button" aria-label={`Удалить уровень ${index + 1}`} disabled={disabled || levels.length <= 1} onClick={() => onChange(levels.filter((_, i) => i !== index))} className="flex h-9 w-9 items-center justify-center rounded-lg text-[#9a9083] hover:bg-white/10 hover:text-white disabled:opacity-30"><Trash2 className="h-4 w-4" /></button>
     </div>)}
-    <button type="button" disabled={disabled || levels.length >= 40} onClick={() => { const last = [...levels].reverse().find((level) => level.kind === "play"); onChange([...levels, { kind: "play", minutes: 20, smallBlind: last ? last.bigBlind : 50, bigBlind: last ? last.bigBlind * 2 : 100, ante: 0 }]); }} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2.5 text-sm text-[#e8dac3] hover:border-[var(--accent)] disabled:opacity-40"><Plus className="h-4 w-4" />Добавить уровень</button>
+    <div className="flex flex-wrap gap-2"><button type="button" disabled={disabled || levels.length >= 40} onClick={() => { const last = [...levels].reverse().find((level) => level.kind === "play"); onChange([...levels, { kind: "play", minutes: 20, smallBlind: last ? last.bigBlind : 50, bigBlind: last ? last.bigBlind * 2 : 100, ante: 0 }]); }} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2.5 text-sm text-[#e8dac3] hover:border-[var(--accent)] disabled:opacity-40"><Plus className="h-4 w-4" />Добавить уровень</button>
+    <button type="button" disabled={disabled || levels.length >= 40} onClick={() => onChange([...levels, { kind: "break", minutes: 10, smallBlind: 0, bigBlind: 0, ante: 0 }])} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2.5 text-sm text-[#e8dac3] hover:border-[var(--accent)] disabled:opacity-40"><Plus className="h-4 w-4" />Добавить перерыв</button></div>
   </div>;
 }
 

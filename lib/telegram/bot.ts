@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, inArray, not } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { registrations, tournaments, type Tournament } from "@/lib/db/schema";
+import { players, ratingHistory, registrations, tournaments, type Tournament } from "@/lib/db/schema";
 import { setRegistrationStatus } from "@/lib/registrations/set-status";
 import { createRegistration } from "@/lib/registrations/create";
 import { normalizePhone } from "@/lib/phone";
@@ -339,6 +339,45 @@ async function confirmApplication(chatId: number, telegramUsername?: string) {
 
 // --- menu actions --------------------------------------------------------
 
+async function handleClubRating(chatId: number) {
+  const leaders = await db.select({ name: players.name, rating: players.rating, tournamentsPlayed: players.tournamentsPlayed })
+    .from(players).orderBy(desc(players.rating), asc(players.name)).limit(5);
+  if (leaders.length === 0) {
+    await sendTelegramMessage(chatId, "Рейтинг появится после первого завершённого турнира.", { replyKeyboard: MAIN_MENU_KEYBOARD });
+    return;
+  }
+  let place = 0;
+  let previousRating: number | null = null;
+  const lines = leaders.map((player) => {
+    if (player.rating !== previousRating) place++;
+    previousRating = player.rating;
+    return `${place}. <b>${escapeHtml(player.name)}</b> — ${Math.round(player.rating)} очков · ${player.tournamentsPlayed} турн.`;
+  });
+  await sendTelegramMessage(chatId, `<b>🏆 Рейтинг Royal63</b>\n\n${lines.join("\n")}\n\nПолная таблица и история — на сайте клуба.`, { replyKeyboard: MAIN_MENU_KEYBOARD });
+}
+
+async function handleMyRating(chatId: number) {
+  const [player] = await db.select().from(players)
+    .where(eq(players.telegramChatId, String(chatId)))
+    .orderBy(desc(players.updatedAt)).limit(1);
+  if (!player) {
+    await sendTelegramMessage(chatId, "Ваш рейтинг появится здесь после первого завершённого турнира. Если вы уже играли, попросите организатора связать заявку с этим Telegram-аккаунтом.", { replyKeyboard: MAIN_MENU_KEYBOARD });
+    return;
+  }
+  const recent = await db.select({ tournamentId: ratingHistory.tournamentId, place: ratingHistory.place, points: ratingHistory.pointsEarned })
+    .from(ratingHistory).where(eq(ratingHistory.playerId, player.id)).orderBy(desc(ratingHistory.createdAt)).limit(3);
+  const tournamentsById = new Map((await Promise.all(recent.map(async (result) => {
+    const [tournament] = await db.select({ id: tournaments.id, title: tournaments.title }).from(tournaments).where(eq(tournaments.id, result.tournamentId)).limit(1);
+    return tournament;
+  }))).filter((item) => item != null).map((item) => [item.id, item.title]));
+  const history = recent.map((result) => `• ${escapeHtml(tournamentsById.get(result.tournamentId) ?? "Турнир")} — ${result.place}-е место, ${result.points >= 0 ? "+" : ""}${Math.round(result.points)} очков`);
+  await sendTelegramMessage(chatId,
+    `<b>👤 ${escapeHtml(player.name)}</b>\n🏆 ${Math.round(player.rating)} очков · ${player.tournamentsPlayed} турн.` +
+    (history.length ? `\n\n<b>Последние результаты</b>\n${history.join("\n")}` : ""),
+    { replyKeyboard: MAIN_MENU_KEYBOARD },
+  );
+}
+
 async function handleMyRegistrations(chatId: number) {
   const rows = await db
     .select()
@@ -623,6 +662,14 @@ async function handleMessage(update: TelegramUpdate) {
   }
   if (/^\/status\b/.test(text)) {
     await handleMyRegistrations(chatId);
+    return;
+  }
+  if (/^\/profile\b/.test(text) || text === MENU_LABELS.myRating) {
+    await handleMyRating(chatId);
+    return;
+  }
+  if (/^\/rating\b/.test(text) || text === MENU_LABELS.rating) {
+    await handleClubRating(chatId);
     return;
   }
   if (/^\/tournaments\b/.test(text) || text === MENU_LABELS.tournaments) {

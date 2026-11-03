@@ -21,6 +21,16 @@ export const DEFAULT_BLIND_LEVELS: BlindLevel[] = [
   { kind: "play", minutes: 20, smallBlind: 1000, bigBlind: 2000, ante: 200 },
 ];
 
+export type BlindPreset = "turbo" | "standard" | "deep";
+
+export function blindPreset(preset: BlindPreset): BlindLevel[] {
+  const minutes = preset === "turbo" ? 10 : preset === "deep" ? 30 : 20;
+  return DEFAULT_BLIND_LEVELS.map((level) => ({
+    ...level,
+    minutes: level.kind === "break" ? (preset === "deep" ? 15 : 10) : minutes,
+  }));
+}
+
 export function totalSeconds(levels: BlindLevel[]) {
   return levels.reduce((sum, level) => sum + level.minutes * 60, 0);
 }
