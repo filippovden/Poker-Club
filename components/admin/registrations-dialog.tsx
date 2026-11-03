@@ -446,7 +446,7 @@ function RegistrationsList({
                         </select>
                         <button
                           onClick={() => toggleCheckedIn(r.id, !r.checkedIn)}
-                          className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                          className={`flex h-10 w-10 items-center justify-center rounded-lg ${
                             r.checkedIn
                               ? "text-[var(--live)] hover:bg-[var(--live)]/10"
                               : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
@@ -461,7 +461,7 @@ function RegistrationsList({
                     {r.status === "approved" && hasTables && r.tableNumber != null && (
                       <button
                         onClick={() => unseat(r.id)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
                         aria-label="Снять с места"
                         title="Снять с места"
                       >
@@ -471,7 +471,7 @@ function RegistrationsList({
                     {r.status !== "playing" && (
                       <button
                         onClick={() => startEdit(r)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
                         aria-label="Изменить имя/телефон"
                         title="Изменить имя/телефон"
                       >
@@ -481,7 +481,7 @@ function RegistrationsList({
                     {(r.status === "pending" || r.status === "rejected") && (
                       <button
                         onClick={() => setStatus(r.id, "approved")}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--live)]/10 hover:text-[var(--live)]"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--live)]/10 hover:text-[var(--live)]"
                         aria-label="Одобрить заявку"
                         title="Одобрить заявку"
                       >
@@ -491,7 +491,7 @@ function RegistrationsList({
                     {(r.status === "pending" || r.status === "approved") && (
                       <button
                         onClick={() => setStatus(r.id, "rejected")}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
                         aria-label="Отклонить заявку"
                         title="Отклонить заявку"
                       >
@@ -501,7 +501,7 @@ function RegistrationsList({
                     {r.status !== "playing" && (
                       <button
                         onClick={() => remove(r.id)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
                         aria-label="Удалить заявку"
                         title="Удалить заявку"
                       >

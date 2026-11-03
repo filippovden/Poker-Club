@@ -266,16 +266,17 @@ export function DashboardShell({
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <div className="mb-6 flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="tournaments">Турниры</TabsTrigger>
-            <TabsTrigger value="news">Новости</TabsTrigger>
-            <TabsTrigger value="stats">Учёт и рейтинг</TabsTrigger>
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <TabsList className="grid w-full grid-cols-3 sm:inline-flex sm:w-auto">
+            <TabsTrigger value="tournaments" className="mr-0 px-1 text-center sm:mr-4">Турниры</TabsTrigger>
+            <TabsTrigger value="news" className="mr-0 px-1 text-center sm:mr-4">Новости</TabsTrigger>
+            <TabsTrigger value="stats" className="mr-0 px-1 text-center sm:mr-4"><span className="sm:hidden">Рейтинг</span><span className="hidden sm:inline">Учёт и рейтинг</span></TabsTrigger>
           </TabsList>
           {tab !== "stats" && (
             <Button
               size="sm"
               data-testid="add-item-button"
+              className="w-full sm:w-auto"
               onClick={tab === "tournaments" ? openNewTournament : openNewNews}
             >
               <Plus className="h-4 w-4" />
@@ -352,13 +353,13 @@ export function DashboardShell({
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 self-end sm:self-auto">
+                  <div className="flex flex-wrap gap-2 self-stretch sm:self-auto">
                     <button
                       onClick={() => {
                         setRegistrationsTournamentId(t.id);
                         setRegistrationsDialogOpen(true);
                       }}
-                      className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-xs font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                      className="flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-xs font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]"
                       aria-label="Заявки"
                       title="Заявки"
                     >
@@ -369,13 +370,13 @@ export function DashboardShell({
                         setLiveTournamentId(t.id);
                         setLiveDialogOpen(true);
                       }}
-                      className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-xs font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                      className="flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-xs font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]"
                       aria-label="Ход турнира"
                       title="Ход турнира"
                     >
                       <PlayCircle className="h-3.5 w-3.5" /> Ход игры
                     </button>
-                    <Link href={`/admin/tournament/${t.id}`} className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--accent)]/40 px-3 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10" title="Таймер и экран для зала">
+                    <Link href={`/admin/tournament/${t.id}`} className="flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--accent)]/40 px-3 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10" title="Таймер и экран для зала">
                       <MonitorPlay className="h-3.5 w-3.5" /> Пульт и экран
                     </Link>
                     <button
@@ -383,7 +384,7 @@ export function DashboardShell({
                         setCheckinQrTournamentId(t.id);
                         setCheckinQrOpen(true);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
                       aria-label="QR для входа"
                       title="QR для входа"
                     >
@@ -394,7 +395,7 @@ export function DashboardShell({
                         setAnnounceTournamentId(t.id);
                         setAnnounceOpen(true);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
                       aria-label="Объявление в Telegram"
                       title="Объявление в Telegram"
                     >
@@ -408,14 +409,14 @@ export function DashboardShell({
                         setTournamentFormKey((k) => k + 1);
                         setTournamentDialogOpen(true);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
                       aria-label="Изменить"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => duplicateTournament(t)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
                       aria-label="Дублировать (на неделю позже)"
                       title="Дублировать (на неделю позже)"
                     >
@@ -423,7 +424,7 @@ export function DashboardShell({
                     </button>
                     <button
                       onClick={() => removeTournament(t)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
                       aria-label="Удалить"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -462,14 +463,14 @@ export function DashboardShell({
                         setNewsError(undefined);
                         setNewsDialogOpen(true);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
                       aria-label="Изменить"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => removeNews(item)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
                       aria-label="Удалить"
                     >
                       <Trash2 className="h-3.5 w-3.5" />

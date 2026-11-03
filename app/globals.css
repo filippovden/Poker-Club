@@ -204,11 +204,11 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px soli
 .royal-tv-error { position: fixed; right: 1rem; top: 1rem; z-index: 10; max-width: 18rem; border-radius: .75rem; background: #3b1616; padding: 1rem; color: #ffe1e1; }
 @media(max-width:680px) {
   .royal-clock-stage-screen { min-height: 100dvh; }
-  .royal-clock-stage-control { min-height: 700px; }
+  .royal-clock-stage-control { min-height: 580px; }
   .royal-clock-content { padding: 1.5rem; }
   .royal-clock-brand-divider,.royal-clock-brand-caption { display: none; }
   .royal-clock-status { font-size: .6rem; letter-spacing: .11em; }
-  .royal-clock-main { padding: 2.2rem 0; }
+  .royal-clock-main { padding: 1.4rem 0; }
   .royal-clock-title { max-width: 100%; font-size: clamp(1.25rem,5vw,2rem); }
   .royal-clock-time,.royal-clock-stage-control .royal-clock-time { font-size: clamp(5rem,21vw,8rem); }
   .royal-broadcast-current { margin-top: 2.4rem; }
