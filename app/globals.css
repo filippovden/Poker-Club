@@ -161,7 +161,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px soli
 .royal-clock-stage { position: relative; isolation: isolate; overflow: hidden; color: #f7f2e7; background: #06110c; }
 .royal-clock-stage-screen { min-height: 100dvh; }
 .royal-clock-stage-control { min-height: 630px; border: 1px solid rgba(221,185,115,.28); border-radius: 1.25rem; }
-.royal-clock-photo { position: absolute; z-index: -2; inset: 0; background: linear-gradient(90deg,rgba(2,12,8,.88) 0%,rgba(2,12,8,.52) 43%,rgba(2,12,8,.06) 80%),linear-gradient(0deg,rgba(2,9,6,.84) 0%,transparent 23%,transparent 78%,rgba(2,9,6,.3)),url('/brand/royal63-broadcast-table-v3.jpg') center/cover no-repeat; }
+.royal-clock-photo { position: absolute; z-index: -2; inset: 0; background: radial-gradient(ellipse at 50% 44%,rgba(2,11,7,.75),rgba(2,11,7,.36) 43%,rgba(2,11,7,.12) 75%),linear-gradient(0deg,rgba(2,9,6,.85) 0%,transparent 25%,transparent 78%,rgba(2,9,6,.4)),url('/brand/royal63-broadcast-table-v3.jpg') center/cover no-repeat; }
 .royal-clock-content { display: flex; min-height: inherit; flex-direction: column; width: min(100%,1920px); margin: auto; padding: clamp(1.5rem,2.1vw,2.6rem) clamp(1.5rem,5vw,7rem); }
 .royal-clock-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: clamp(.8rem,1.2vw,1.5rem); border-bottom: 1px solid rgba(218,184,116,.3); }
 .royal-clock-brand { display: flex; align-items: center; gap: .8rem; color: var(--accent); }
@@ -170,20 +170,22 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px soli
 .royal-clock-status { display: inline-flex; align-items: center; gap: .75rem; color: #f2e9d7; font-size: clamp(.65rem,.85vw,.9rem); font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
 .royal-clock-dot { width: .65rem; height: .65rem; border-radius: 50%; background: #aa9770; }
 .royal-clock-dot-live { background: #8fdfa7; box-shadow: 0 0 0 5px rgba(143,223,167,.13),0 0 16px rgba(143,223,167,.45); }
-.royal-clock-main { display: flex; flex: 1; flex-direction: column; justify-content: center; max-width: 62%; padding: clamp(1rem,2vh,2.5rem) 0; }
+.royal-clock-main { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; width: 100%; padding: clamp(1rem,2vh,2.5rem) 0; text-align: center; }
 .royal-clock-eyebrow,.royal-broadcast-time-label { color: #d4af6b; font-size: clamp(.7rem,.9vw,.98rem); font-weight: 700; letter-spacing: .24em; text-transform: uppercase; }
 .royal-broadcast-diamond { display: inline-block; margin: 0 1.15rem; color: #977a4d; font-size: .55em; vertical-align: middle; }
-.royal-clock-title { max-width: 28ch; margin-top: .55rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e8dfcc; font-size: clamp(1.25rem,2vw,2.4rem); font-weight: 500; letter-spacing: -.025em; }
-.royal-broadcast-core { margin-top: clamp(1.5rem,2.4vh,3rem); }
-.royal-clock-time { width: fit-content; margin-top: .1rem; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: clamp(7rem,15.5vw,20rem); font-weight: 500; line-height: .95; letter-spacing: -.095em; text-shadow: 0 10px 65px rgba(0,0,0,.3); }
+.royal-broadcast-heading { width: 100%; }
+.royal-clock-title { max-width: min(100%,70ch); margin: .55rem auto 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e8dfcc; font-size: clamp(1.25rem,2vw,2.4rem); font-weight: 500; letter-spacing: -.025em; }
+.royal-broadcast-core { display: flex; flex-direction: column; align-items: center; width: 100%; margin-top: clamp(1.5rem,2.4vh,3rem); }
+.royal-clock-time { width: fit-content; margin-top: .1rem; padding-right: .08em; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: clamp(7rem,15.5vw,20rem); font-weight: 500; line-height: .95; letter-spacing: -.095em; text-shadow: 0 10px 65px rgba(0,0,0,.3); }
 .royal-clock-time-line { height: 4px; width: min(100%,53rem); margin-top: clamp(.5rem,1vw,1.5rem); background: rgba(246,238,217,.2); }
 .royal-clock-time-line span { display: block; height: 100%; background: linear-gradient(90deg,#b88745,#e7c681); box-shadow: 0 0 14px rgba(212,170,84,.35); transition: width .3s linear; }
-.royal-broadcast-current { display: flex; flex-direction: column; align-items: flex-start; margin-top: clamp(1.5rem,2.4vh,2.5rem); padding-left: clamp(1rem,1.6vw,2rem); border-left: 3px solid #d4aa54; }
+.royal-broadcast-current { display: flex; flex-direction: column; align-items: center; margin-top: clamp(1.5rem,2.4vh,2.5rem); }
 .royal-broadcast-current > span { color: #d4af6b; font-size: clamp(.68rem,.85vw,.92rem); font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
 .royal-broadcast-current strong { font-size: clamp(3rem,4vw,5.5rem); font-weight: 500; letter-spacing: -.065em; line-height: 1.1; white-space: nowrap; }
 .royal-broadcast-current small { color: #baaf98; font-size: clamp(.7rem,.9vw,.95rem); }
 .royal-clock-footer { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: clamp(1rem,3vw,4rem); border-top: 1px solid rgba(220,190,130,.35); padding-top: clamp(.9rem,1.4vw,1.7rem); }
-.royal-clock-stat { min-width: 0; display: flex; flex-direction: column; gap: .45rem; }
+.royal-clock-stat { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: .45rem; text-align: center; }
+.royal-clock-stat + .royal-clock-stat { border-left: 1px solid rgba(220,190,130,.22); }
 .royal-clock-stat > span { color: #d4ac62; font-size: clamp(.65rem,.9vw,.9rem); font-weight: 600; letter-spacing: .19em; text-transform: uppercase; }
 .royal-clock-stat strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(1.7rem,3.1vw,3.7rem); font-weight: 500; letter-spacing: -.045em; line-height: 1.1; }
 .royal-clock-stat strong em { color: #adac9b; font-size: .55em; font-style: normal; font-weight: 400; }
@@ -202,7 +204,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px soli
   .royal-clock-content { padding: 1.5rem; }
   .royal-clock-brand-divider,.royal-clock-brand-caption { display: none; }
   .royal-clock-status { font-size: .6rem; letter-spacing: .11em; }
-  .royal-clock-main { max-width: 100%; padding: 2.2rem 0; }
+  .royal-clock-main { padding: 2.2rem 0; }
   .royal-clock-title { max-width: 100%; font-size: clamp(1.25rem,5vw,2rem); }
   .royal-clock-time,.royal-clock-stage-control .royal-clock-time { font-size: clamp(5rem,21vw,8rem); }
   .royal-broadcast-current { margin-top: 2.4rem; }
@@ -210,6 +212,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px soli
   .royal-clock-photo { background-position: 55% center; }
   .royal-clock-footer { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }
   .royal-clock-stat-break { grid-column: 1 / -1; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,.14); }
+  .royal-clock-stat-break { border-left: 0 !important; }
   .royal-clock-stat strong { font-size: clamp(1.2rem,5vw,2rem); }
   .royal-clock-stat small { line-height: 1.2; }
 }
