@@ -1,5 +1,6 @@
+import { normalizePhone } from "@/lib/phone";
 import { randomUUID } from "node:crypto";
-import { and, count, eq, inArray, or } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { registrations, tournaments, type Tournament } from "@/lib/db/schema";
 import { sendTelegramMessage } from "@/lib/telegram/client";
@@ -39,7 +40,9 @@ export async function createRegistration(params: {
     .where(eq(tournaments.id, tournamentId))
     .limit(1);
 
-  if (!tournament) return { error: "Турнир не найден" };
+  if (!tournament || tournament.isHidden) return { error: "Турнир не найден" };
+  if (name.trim().length < 2 || name.trim().length > 80) return { error: "Имя должно содержать от 2 до 80 символов" };
+  if (!/^[\d\s()+-]+$/.test(phone) || !/^(?:[78])?\d{10}$/.test(phone.replace(/\D/g, ""))) return { error: "Введите корректный российский номер телефона" };
   if (tournament.status === "completed") {
     return { error: "Регистрация на этот турнир уже закрыта" };
   }
@@ -67,24 +70,13 @@ export async function createRegistration(params: {
     }
   }
 
-  const duplicateConditions = [eq(registrations.phone, phone)];
-  if (email) duplicateConditions.push(eq(registrations.email, email));
-
-  const [existing] = await db
-    .select()
-    .from(registrations)
-    .where(
-      and(
-        eq(registrations.tournamentId, tournamentId),
-        or(...duplicateConditions),
-        // Covers every status that means "already has a live application or
-        // is already at the table" — not just pending/approved, since a
-        // seated/playing/busted player re-submitting shouldn't create a
-        // second application for a tournament they're already part of.
-        inArray(registrations.status, ["pending", "approved", "playing", "eliminated"]),
-      ),
-    )
-    .limit(1);
+  const active = await db.select().from(registrations).where(and(
+    eq(registrations.tournamentId, tournamentId),
+    inArray(registrations.status, ["pending", "approved", "playing", "eliminated"]),
+  ));
+  const existing = active.find(r => normalizePhone(r.phone) === normalizePhone(phone)
+    || (email && r.email?.toLowerCase() === email.toLowerCase())
+    || (telegramChatId && r.telegramChatId === telegramChatId));
 
   if (existing) {
     return { error: "Вы уже подавали заявку на этот турнир" };
@@ -94,8 +86,8 @@ export async function createRegistration(params: {
 
   await db.insert(registrations).values({
     tournamentId,
-    name,
-    phone,
+    name: name.trim(),
+    phone: "+7" + normalizePhone(phone),
     email: email || null,
     comment: comment || null,
     cancelToken,

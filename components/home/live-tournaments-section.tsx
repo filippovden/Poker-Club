@@ -31,7 +31,7 @@ export async function LiveTournamentsSection() {
             <span className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--accent)]">
               Расписание
             </span>
-            <h2 className="font-display mt-4 text-[clamp(1.75rem,4vw,3rem)] font-semibold tracking-tight">
+            <h2 className="royal-editorial mt-4 text-[clamp(2.3rem,4vw,3.5rem)] font-normal tracking-tight">
               Ближайшие турниры
             </h2>
           </div>

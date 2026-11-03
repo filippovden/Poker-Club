@@ -71,9 +71,9 @@ export function TournamentCard({
 
   return (
     <div
-      className={`group relative flex flex-col gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)]/70 p-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] backdrop-blur-md transition-all duration-300 hover:border-[var(--accent)]/40 hover:-translate-y-0.5 ${isPast && !hasResults ? "opacity-60" : ""}`}
+      className={`group relative h-full flex flex-col gap-5 rounded-2xl border border-[var(--border)] bg-[linear-gradient(145deg,#221e17,#141311)] p-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] backdrop-blur-md transition-all duration-300 hover:border-[var(--accent)]/40 hover:-translate-y-0.5 ${isPast && !hasResults ? "opacity-60" : ""}`}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Badge variant={tournament.status === "live" ? "live" : "default"}>
           {tournament.status === "live" && (
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
@@ -99,7 +99,7 @@ export function TournamentCard({
       </div>
 
       <div>
-        <h3 className="font-display text-xl font-medium tracking-tight">
+        <h3 className="font-display text-lg font-medium tracking-tight">
           {tournament.title}
         </h3>
         {tournament.description && (
@@ -109,14 +109,16 @@ export function TournamentCard({
         )}
       </div>
 
-      <div className="mt-auto flex items-center justify-between border-t border-[var(--border)] pt-4 text-sm">
-        <span className="font-medium">
+      <div className="mt-auto grid grid-cols-2 gap-4 border-t border-[var(--border)] pt-4 text-sm">
+        <span className="font-medium"><span className="mb-1 block text-[10px] font-normal uppercase tracking-widest text-[var(--muted-foreground)]">Участие</span>
           {tournament.buyIn ? `${tournament.buyIn.toLocaleString("ru-RU")} ₽` : "Фриролл"}
         </span>
-        <span className="text-[var(--muted-foreground)]">
+        <span className="text-[var(--muted-foreground)]"><span className="mb-1 block text-[10px] uppercase tracking-widest">Формат</span>
           {FORMAT_LABELS[tournament.format] ?? tournament.format}
         </span>
       </div>
+
+      {tournament.startingStack != null && <p className="text-xs text-[var(--muted-foreground)]">Стартовый стек <strong className="ml-2 text-[var(--foreground)]">{tournament.startingStack.toLocaleString("ru-RU")}</strong></p>}
 
       {isPast && hasResults && (
         <div className="rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/5 p-3">

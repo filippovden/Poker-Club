@@ -15,6 +15,8 @@ const SEARCH_STATUS_LABELS: Record<string, string> = {
   eliminated: "Выбыл",
 };
 
+const PAYMENT_LABELS: Record<string, string> = { cash: "Наличные", transfer: "Перевод", qr: "СБП / QR", terminal: "Терминал" };
+
 function formatDate(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -65,7 +67,7 @@ export function StatsPanel({
     downloadCsv(
       "royal63-uchet-igrokov.csv",
       ["Турнир", "Дата", "Игрок", "Телефон", "Статус", "На месте", "Стол", "Место за столом", "Итоговое место", "Бай-ин", "Ребаи", "Аддоны", "Сумма ребаев/аддонов", "Способ оплаты"],
-      visibleLedger.map((r) => [r.tournamentTitle, formatDate(r.startsAt), r.playerName, r.phone, SEARCH_STATUS_LABELS[r.status] ?? r.status, r.checkedIn ? "Да" : "Нет", r.tableNumber ?? "", r.seatNumber ?? "", r.place ?? "", r.buyIn ?? "", r.rebuyCount, r.addonCount, r.rebuyAddonMoney, r.paymentMethod ?? ""]),
+      visibleLedger.map((r) => [r.tournamentTitle, formatDate(r.startsAt), r.playerName, r.phone, SEARCH_STATUS_LABELS[r.status] ?? r.status, r.checkedIn ? "Да" : "Нет", r.tableNumber ?? "", r.seatNumber ?? "", r.place ?? "", r.buyIn ?? "", r.rebuyCount, r.addonCount, r.rebuyAddonMoney, r.paymentMethod ? PAYMENT_LABELS[r.paymentMethod] ?? r.paymentMethod : ""]),
     );
   }
   function exportTournaments() {
@@ -138,7 +140,7 @@ export function StatsPanel({
           <div className="mt-3 max-h-[480px] overflow-auto rounded-xl border border-[var(--border)]">
             <table className="w-full min-w-[900px] text-left text-sm">
               <thead className="sticky top-0 bg-[var(--surface-2)] text-xs text-[var(--muted-foreground)]"><tr>
-                <th className="px-4 py-3">Игрок</th><th className="px-4 py-3">Турнир</th><th className="px-4 py-3">Статус</th><th className="px-4 py-3">На месте</th><th className="px-4 py-3">Стол / место</th><th className="px-4 py-3">Итог</th><th className="px-4 py-3">Ребаи / аддоны</th><th className="px-4 py-3">Расчёт</th><th className="px-4 py-3">Оплата</th>
+                <th className="px-4 py-3">Игрок</th><th className="px-4 py-3">Турнир</th><th className="px-4 py-3">Статус</th><th className="px-4 py-3">На месте</th><th className="px-4 py-3">Стол / место</th><th className="px-4 py-3">Итог</th><th className="px-4 py-3">Ребаи / аддоны</th><th className="px-4 py-3">Расчётная сумма</th><th className="px-4 py-3">Способ оплаты</th>
               </tr></thead>
               <tbody>{visibleLedger.map((r) => <tr key={r.registrationId} className="border-t border-[var(--border)]">
                 <td className="px-4 py-3 font-medium">{r.playerName}<span className="block text-xs font-normal text-[var(--muted-foreground)]">{r.phone}</span></td>
@@ -149,7 +151,7 @@ export function StatsPanel({
                 <td className="px-4 py-3">{r.place ?? "—"}</td>
                 <td className="px-4 py-3">{r.rebuyCount} / {r.addonCount}</td>
                 <td className="px-4 py-3">{((r.status === "playing" || r.status === "eliminated" ? r.buyIn ?? 0 : 0) + r.rebuyAddonMoney).toLocaleString("ru-RU")} ₽</td>
-                <td className="px-4 py-3">{r.paymentMethod ?? "—"}</td>
+                <td className="px-4 py-3">{r.paymentMethod ? PAYMENT_LABELS[r.paymentMethod] ?? r.paymentMethod : "—"}</td>
               </tr>)}</tbody>
             </table>
           </div>}

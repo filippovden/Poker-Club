@@ -12,43 +12,30 @@ export async function Hero() {
   const date = next && new Date(next.startsAt).toLocaleString("ru-RU", {
     timeZone: "Europe/Samara", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
   });
-
   return (
-    <section className="relative overflow-hidden border-b border-[var(--border)] bg-[radial-gradient(ellipse_at_78%_35%,rgba(212,170,84,0.12),transparent_42%),linear-gradient(145deg,#11100e,#0b0a09)] pt-28 sm:pt-36">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(212,170,84,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(212,170,84,.08)_1px,transparent_1px)] [background-size:72px_72px] [mask-image:linear-gradient(to_right,transparent,black)]" />
-      <div className="mx-auto grid max-w-6xl gap-10 px-6 pb-16 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:gap-16 lg:pb-24">
-        <div className="relative z-10">
-          <p className="mb-6 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Покерный клуб · Тольятти</p>
-          <h1 className="font-display max-w-3xl text-[clamp(2.6rem,6vw,5.4rem)] font-semibold leading-[1.05] tracking-[-0.055em]">
-            Игра начинается <span className="text-[var(--accent)]">здесь.</span>
-          </h1>
-          <p className="mt-7 max-w-xl text-base leading-relaxed text-[var(--muted-foreground)] sm:text-lg">
-            Выберите турнир, оставьте заявку и следите за результатами клуба. Всё важное для игрока — в одном месте.
-          </p>
+    <section className="royal-hero relative isolate overflow-hidden border-b border-[var(--border)]">
+      <div className="royal-hero-art" aria-hidden="true">
+        <Image src="/brand/royal63-card-full.jpg" alt="" fill priority sizes="(min-width: 1024px) 65vw, 100vw" className="hero-card-art object-cover" />
+      </div>
+      <div className="royal-hero-shade" aria-hidden="true" />
+      <div className="royal-hero-halo" aria-hidden="true" />
+      <div className="relative mx-auto max-w-6xl px-6 pt-32 sm:pt-40">
+        <div className="max-w-2xl pb-14 sm:pb-20">
+          <p className="mb-7 flex items-center gap-3 text-[10px] font-medium uppercase tracking-[.24em] text-[var(--accent)] sm:text-xs"><span className="h-px w-8 bg-current" />Royal63 · Покерный клуб · Тольятти</p>
+          <h1 className="royal-editorial text-[clamp(4.2rem,8vw,7.5rem)] leading-[.95] tracking-[-.055em]">Твой ход.<br /><em className="font-normal text-[var(--accent)]">Твой круг.</em></h1>
+          <p className="mt-8 max-w-[26rem] text-base leading-relaxed text-[#c4bdb2] sm:text-lg">Живой покер. Люди, с которыми хочется играть. Вечер, который начинается за одним столом.</p>
           <div className="mt-9 flex flex-wrap gap-3">
             <Button asChild size="lg"><Link href="/tournaments">Выбрать турнир <span aria-hidden="true">↗</span></Link></Button>
-            <Button asChild size="lg" variant="outline"><Link href="/registration/status">Проверить заявку</Link></Button>
+            <Button asChild size="lg" variant="outline"><Link href="/registration/status">Моя заявка</Link></Button>
           </div>
-          <div className="mt-12 grid max-w-xl grid-cols-2 gap-5 border-t border-[var(--border)] pt-6 text-sm sm:grid-cols-3">
-            <div><strong className="block">Расписание</strong><span className="text-[var(--muted-foreground)]">и запись онлайн</span></div>
-            <div><strong className="block">Результаты</strong><span className="text-[var(--muted-foreground)]">после турнира</span></div>
-            <div className="col-span-2 sm:col-span-1"><strong className="block">Рейтинг</strong><span className="text-[var(--muted-foreground)]">игроков клуба</span></div>
-          </div>
+          <div className="mt-8 flex items-center gap-4 text-[10px] uppercase tracking-[.18em] text-[#a79c8b]"><span>Texas Hold’em</span><span className="text-[var(--accent)]" aria-hidden="true">♠</span><span>Omaha</span><span className="ml-2 rounded border border-[var(--border)] px-2 py-1">18+</span></div>
         </div>
-        <div className="relative min-h-[360px] overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[#17130e] shadow-[0_32px_90px_-38px_rgba(212,170,84,0.25)] sm:min-h-[500px]">
-          <Image src="/brand/royal63-card-full.jpg" alt="Игральная карта Royal63" fill priority className="hero-card-art object-cover opacity-90" sizes="(min-width: 1024px) 45vw, 100vw" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0d0b08]/95 via-[#0d0b08]/15 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8">
-            <p className="text-xs uppercase tracking-[0.16em] text-white/70">Ближайший турнир</p>
-            {next ? <>
-              <h2 className="mt-2 font-display text-2xl font-semibold">{next.title}</h2>
-              <p className="mt-2 text-sm text-white/80">{date} · {next.format}{next.buyIn != null ? ` · ${next.buyIn.toLocaleString("ru-RU")} ₽` : ""}</p>
-              <Link href="/tournaments" className="mt-5 inline-block rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-foreground)] hover:brightness-110">Посмотреть и записаться ↗</Link>
-            </> : <>
-              <h2 className="mt-2 font-display text-2xl font-semibold">Скоро за столом</h2>
-              <p className="mt-2 text-sm text-white/80">Новые даты появятся в расписании.</p>
-            </>}
+        <div className="relative grid gap-5 border-t border-[var(--accent)]/25 py-6 sm:grid-cols-[1fr_auto] sm:items-center sm:py-7">
+          <div className="flex items-center gap-5">
+            <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[var(--accent)]/30 text-xl text-[var(--accent)]">♠</span>
+            <div><p className="mb-1 text-[10px] uppercase tracking-[.2em] text-[var(--accent)]">Следующая встреча за столом</p><p className="text-base font-medium sm:text-lg">{next?.title ?? "Новый турнир — скоро"}</p><p className="mt-1 text-xs text-[var(--muted-foreground)]">{next ? `${date} · ${next.format}${next.startingStack ? ` · Стек ${next.startingStack.toLocaleString("ru-RU")}` : ""}` : "Расписание появится здесь. Пока познакомьтесь с клубом."}</p></div>
           </div>
+          <Link href={next ? "/tournaments" : "/about"} className="ml-[4.25rem] text-sm text-[var(--accent)] underline-offset-4 hover:underline sm:ml-0">{next ? "К расписанию" : "О клубе"} <span aria-hidden="true">↗</span></Link>
         </div>
       </div>
     </section>

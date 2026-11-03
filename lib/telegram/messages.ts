@@ -132,11 +132,13 @@ export const MENU_LABELS = {
   nextTournament: "🃏 Ближайший турнир",
   apply: "✍️ Подать заявку",
   help: "ℹ️ Как это работает",
+  tournaments: "🗓 Все турниры",
+  menu: "↩️ В меню",
 } as const;
 
 export const MAIN_MENU_KEYBOARD = [
   [MENU_LABELS.nextTournament, MENU_LABELS.apply],
-  [MENU_LABELS.myRegistrations],
+  [MENU_LABELS.myRegistrations, MENU_LABELS.tournaments],
   [MENU_LABELS.help],
 ];
 
@@ -164,20 +166,23 @@ const STATUS_LABELS: Record<string, string> = {
   pending: "⏳ На рассмотрении",
   approved: "✅ Подтверждена",
   rejected: "❌ Отклонена",
+  playing: "🟢 В игре",
+  eliminated: "🏁 Игра завершена",
 };
 
 export function buildMyRegistrationsMessage(
-  rows: { tournament: TournamentInfo; status: string }[],
+  rows: { tournament: TournamentInfo; status: string; tableNumber?: number | null; seatNumber?: number | null; place?: number | null }[],
 ) {
   if (rows.length === 0) {
     return "У вас пока нет заявок. Нажмите «✍️ Подать заявку», чтобы записаться на ближайший турнир.";
   }
   const list = rows
     .map(
-      ({ tournament, status }) =>
+      ({ tournament, status, tableNumber, seatNumber, place }) =>
         `🃏 <b>${escapeHtml(tournament.title)}</b>\n` +
         `📅 ${formatDateOnly(tournament.startsAt)} 🕒 ${formatTimeOnly(tournament.startsAt)}\n` +
-        `${STATUS_LABELS[status] ?? status}`,
+        `${STATUS_LABELS[status] ?? escapeHtml(status)}` +
+        (place != null ? `\n🏆 Итоговое место: ${place}` : tableNumber != null && seatNumber != null ? `\n🪑 Стол ${tableNumber}, место ${seatNumber}` : ""),
     )
     .join("\n\n");
   return `<b>Ваши заявки:</b>\n\n${list}`;
