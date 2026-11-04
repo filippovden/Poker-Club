@@ -9,6 +9,7 @@ import {
   configureMiniAppMenu,
   editMessageText,
   getTelegramUpdates,
+  miniAppUrl,
   sendTelegramMessage,
   type TelegramUpdate,
 } from "./client";
@@ -243,6 +244,14 @@ async function handleApplyMenu(chatId: number) {
     });
     return;
   }
+  if (miniAppUrl()) {
+    await sendTelegramMessage(chatId, list.length === 1
+      ? "Откройте турнир и отправьте заявку в приложении клуба."
+      : "Выберите турнир — заявка откроется в приложении клуба.", {
+      buttons: list.map((t) => [{ text: tournamentButtonLabel(t), web_app: { url: miniAppUrl(t.id)! } }]),
+    });
+    return;
+  }
   if (list.length === 1) {
     await startApplication(chatId, list[0].id);
     return;
@@ -421,8 +430,11 @@ async function handleNextTournamentInfo(chatId: number) {
     return;
   }
   const spotsLeft = await getSpotsLeft(tournament);
+  const appUrl = miniAppUrl(tournament.id);
   await sendTelegramMessage(chatId, buildNextTournamentMessage(tournament, spotsLeft), {
-    buttons: spotsLeft === null || spotsLeft > 0 ? [[{ text: "✍️ Записаться на этот турнир", callback_data: `apply_start:${tournament.id}` }]] : undefined,
+    buttons: spotsLeft === null || spotsLeft > 0 ? [[appUrl
+      ? { text: "Открыть и записаться", web_app: { url: appUrl } }
+      : { text: "✍️ Записаться на этот турнир", callback_data: `apply_start:${tournament.id}` }]] : undefined,
     replyKeyboard: MAIN_MENU_KEYBOARD,
   });
 }
@@ -454,7 +466,9 @@ async function handleStart(chatId: number, token: string | undefined, telegramUs
   if (!token) {
     await sendTelegramMessage(
       chatId,
-      "Привет! Здесь можно записаться на турнир, посмотреть свои заявки и получать уведомления. Выберите пункт в меню ниже 👇",
+      miniAppUrl()
+        ? "Привет! Турниры и запись доступны в приложении клуба — откройте его кнопкой меню. Здесь будут уведомления, а также быстрые команды для заявок и рейтинга 👇"
+        : "Привет! Здесь можно записаться на турнир, посмотреть свои заявки и получать уведомления. Выберите пункт в меню ниже 👇",
       { replyKeyboard: MAIN_MENU_KEYBOARD },
     );
     return;
@@ -694,7 +708,7 @@ async function handleMessage(update: TelegramUpdate) {
     return;
   }
   if (text === MENU_LABELS.help || /^\/help\b/.test(text)) {
-    await sendTelegramMessage(chatId, buildHelpMessage(), { replyKeyboard: MAIN_MENU_KEYBOARD });
+    await sendTelegramMessage(chatId, buildHelpMessage(Boolean(miniAppUrl())), { replyKeyboard: MAIN_MENU_KEYBOARD });
     return;
   }
 
@@ -977,7 +991,15 @@ async function handleCallbackQuery(update: TelegramUpdate) {
   const applyStartMatch = /^apply_start:(\d+)$/.exec(query.data);
   if (applyStartMatch) {
     await answerCallbackQuery(query.id);
-    await startApplication(query.message.chat.id, Number(applyStartMatch[1]));
+    const tournamentId = Number(applyStartMatch[1]);
+    const appUrl = miniAppUrl(tournamentId);
+    if (appUrl) {
+      await sendTelegramMessage(query.message.chat.id, "Запись теперь в приложении клуба:", {
+        buttons: [[{ text: "Открыть и записаться", web_app: { url: appUrl } }]],
+      });
+    } else {
+      await startApplication(query.message.chat.id, tournamentId);
+    }
     return;
   }
 

@@ -49,6 +49,10 @@ export function MiniApp({ tournaments }: { tournaments: Event[] }) {
 
   useEffect(() => {
     const app = window.Telegram?.WebApp;
+    const tournamentId = Number(new URLSearchParams(window.location.search).get("tournament"));
+    if (Number.isSafeInteger(tournamentId) && tournamentId > 0) {
+      setSelected(tournaments.find((item) => item.id === tournamentId) ?? null);
+    }
     if (app?.initData) {
       app.ready(); app.expand();
       app.setHeaderColor?.("#0b0c0a"); app.setBackgroundColor?.("#0b0c0a");
@@ -56,7 +60,7 @@ export function MiniApp({ tournaments }: { tournaments: Event[] }) {
       loadAccount(app.initData).catch((error) => setNotice(String(error.message)));
     }
     setReady(true);
-  }, []);
+  }, [tournaments]);
 
   async function apply(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

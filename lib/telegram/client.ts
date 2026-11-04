@@ -24,9 +24,19 @@ function fetchOptions(init: RequestInit): RequestInit {
   return dispatcher ? ({ ...init, dispatcher } as RequestInit) : init;
 }
 
-export interface TelegramInlineKeyboardButton {
-  text: string;
-  callback_data: string;
+export type TelegramInlineKeyboardButton =
+  | { text: string; callback_data: string }
+  | { text: string; web_app: { url: string } };
+
+export function miniAppUrl(tournamentId?: number) {
+  const configured = process.env.TELEGRAM_MINI_APP_URL;
+  if (!configured) return null;
+  try {
+    const url = new URL(configured);
+    if (url.protocol !== "https:") return null;
+    if (tournamentId != null) url.searchParams.set("tournament", String(tournamentId));
+    return url.toString();
+  } catch { return null; }
 }
 
 export interface TelegramUpdate {
@@ -112,9 +122,8 @@ export async function sendTelegramMessage(
 }
 
 export async function configureMiniAppMenu() {
-  const url = process.env.TELEGRAM_MINI_APP_URL;
+  const url = miniAppUrl();
   if (!url) return;
-  if (!/^https:\/\//.test(url)) throw new Error("TELEGRAM_MINI_APP_URL must be HTTPS");
   await callApi("setChatMenuButton", {
     menu_button: { type: "web_app", text: "Открыть клуб", web_app: { url } },
   });

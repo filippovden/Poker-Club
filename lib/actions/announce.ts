@@ -4,7 +4,7 @@ import { eq, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { registrations, tournaments } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
-import { sendTelegramMessage, sendTelegramPhoto } from "@/lib/telegram/client";
+import { miniAppUrl, sendTelegramMessage, sendTelegramPhoto, type TelegramInlineKeyboardButton } from "@/lib/telegram/client";
 import { escapeHtml } from "@/lib/telegram/messages";
 
 async function requireAdmin() {
@@ -29,8 +29,8 @@ export interface AnnounceResult {
 // announceNewTournament sends) — for promo copy that needs its own tone,
 // formatting and optionally a picture. Reuses the exact same audience
 // (everyone with a linked Telegram chat) and the same "✍️ Подать заявку"
-// button/callback as every other broadcast, so applying still works the
-// same way regardless of which message got someone there.
+// button as every other broadcast, so applying still works the same way
+// regardless of which message got someone there.
 export async function adminSendCustomAnnouncement(
   tournamentId: number,
   text: string,
@@ -55,7 +55,10 @@ export async function adminSendCustomAnnouncement(
     .where(isNotNull(registrations.telegramChatId));
 
   const escaped = escapeHtml(trimmed);
-  const buttons = [[{ text: "✍️ Подать заявку", callback_data: `apply_start:${tournament.id}` }]];
+  const appUrl = miniAppUrl(tournament.id);
+  const buttons: TelegramInlineKeyboardButton[][] = [[appUrl
+    ? { text: "Открыть и записаться", web_app: { url: appUrl } }
+    : { text: "✍️ Подать заявку", callback_data: `apply_start:${tournament.id}` }]];
 
   let sentCount = 0;
   // Sent one at a time with a small stagger, same as announceNewTournament —

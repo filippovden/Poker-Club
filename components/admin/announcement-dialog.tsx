@@ -81,7 +81,7 @@ function AnnouncementContent({
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={10}
-        placeholder="Текст объявления — уйдёт всем, у кого привязан Telegram, с кнопкой «Подать заявку» на этот турнир."
+        placeholder="Текст объявления — уйдёт игрокам в Telegram с кнопкой записи на этот турнир."
       />
       <p className="text-right text-xs text-[var(--muted-foreground)]">
         {text.length} / {limit}

@@ -78,8 +78,20 @@ async function main() {
     const before = sent.length;
     await handleUpdate({update_id:4,message:{chat:{id:-123,type:'group'},text:'/start'}});
     assert.equal(sent.length,before,'private flow does not run in a group');
-    console.log('PASS: application, contact sharing, validation, stale buttons, cancellation, duplicate identity, hidden tournaments, seating, rating/profile and group isolation');
+    process.env.TELEGRAM_MINI_APP_URL = 'https://royal-63.ru/miniapp';
+    await msg('✍️ Подать заявку');
+    assert.equal(sent.at(-1)?.body.reply_markup.inline_keyboard[0][0].web_app.url,`https://royal-63.ru/miniapp?tournament=${t.id}`);
+    await cb(`apply_start:${t.id}`);
+    assert.equal(sent.at(-1)?.body.reply_markup.inline_keyboard[0][0].web_app.url,`https://royal-63.ru/miniapp?tournament=${t.id}`,'old notification button redirects into Mini App');
+    await msg('/help');
+    assert.match(sent.at(-1)?.body.text,/приложение клуба/);
+    const { announceNewTournament } = await import('../lib/telegram/broadcast');
+    await createRegistration({tournamentId:t.id,name:'Борис',phone:'89990000002',telegramChatId:'123'});
+    await announceNewTournament(t);
+    assert.equal(sent.at(-1)?.body.reply_markup.inline_keyboard[0][0].web_app.url,`https://royal-63.ru/miniapp?tournament=${t.id}`,'announcement opens the selected tournament');
+    console.log('PASS: application, contact sharing, validation, stale buttons, cancellation, duplicate identity, hidden tournaments, seating, rating/profile, group isolation and Mini App handoff');
   } finally {
+    delete process.env.TELEGRAM_MINI_APP_URL;
     globalThis.fetch = originalFetch;
     process.chdir(originalCwd);
     rmSync(temp,{recursive:true,force:true});
