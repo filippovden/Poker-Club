@@ -111,6 +111,15 @@ export async function sendTelegramMessage(
   return result?.result;
 }
 
+export async function configureMiniAppMenu() {
+  const url = process.env.TELEGRAM_MINI_APP_URL;
+  if (!url) return;
+  if (!/^https:\/\//.test(url)) throw new Error("TELEGRAM_MINI_APP_URL must be HTTPS");
+  await callApi("setChatMenuButton", {
+    menu_button: { type: "web_app", text: "Открыть клуб", web_app: { url } },
+  });
+}
+
 export async function sendTelegramPhoto(
   chatId: string | number,
   photoUrl: string,

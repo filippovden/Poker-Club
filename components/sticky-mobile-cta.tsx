@@ -20,7 +20,7 @@ export function StickyMobileCta() {
 
   // Every tournament card already has its own "Подать заявку" button —
   // a second, floating one here would just be visual noise.
-  if (pathname.startsWith("/tournaments") || pathname.startsWith("/admin")) {
+  if (pathname.startsWith("/tournaments") || pathname.startsWith("/admin") || pathname.startsWith("/miniapp")) {
     return null;
   }
   if (!visible) return null;

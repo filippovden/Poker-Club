@@ -6,6 +6,7 @@ import { createRegistration } from "@/lib/registrations/create";
 import { normalizePhone } from "@/lib/phone";
 import {
   answerCallbackQuery,
+  configureMiniAppMenu,
   editMessageText,
   getTelegramUpdates,
   sendTelegramMessage,
@@ -1006,6 +1007,7 @@ let running = false;
 export function startTelegramBot() {
   if (running || !process.env.TELEGRAM_BOT_TOKEN) return;
   running = true;
+  configureMiniAppMenu().catch((err) => console.error("[telegram] mini app menu setup failed:", err));
 
   let offset = 0;
   (async function poll() {
