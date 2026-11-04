@@ -150,6 +150,10 @@ function LiveTournamentBody({
   // rather than get sequential ones just because of click order.
   const [tieSelection, setTieSelection] = useState<Set<number>>(new Set());
   const [viewMode, setViewMode] = useState<"tables" | "list">("tables");
+
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 640px)").matches) setViewMode("list");
+  }, []);
   const [selectedRegId, setSelectedRegId] = useState<number | null>(null);
 
   async function refresh() {
@@ -464,7 +468,7 @@ function LiveTournamentBody({
             <div className="flex justify-end gap-1">
               <button
                 onClick={() => setViewMode("tables")}
-                className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs ${
+                className={`flex h-10 items-center gap-1.5 rounded-lg px-2.5 text-xs ${
                   viewMode === "tables"
                     ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
                     : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)]"
@@ -474,7 +478,7 @@ function LiveTournamentBody({
               </button>
               <button
                 onClick={() => setViewMode("list")}
-                className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs ${
+                className={`flex h-10 items-center gap-1.5 rounded-lg px-2.5 text-xs ${
                   viewMode === "list"
                     ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
                     : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)]"
@@ -519,7 +523,7 @@ function LiveTournamentBody({
                     <button
                       onClick={() => openStackAction(selectedReg, "rebuy")}
                       disabled={busy}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
                       aria-label="Ребай"
                       title="Ребай"
                     >
@@ -528,7 +532,7 @@ function LiveTournamentBody({
                     <button
                       onClick={() => openStackAction(selectedReg, "addon")}
                       disabled={busy}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
                       aria-label="Аддон"
                       title="Аддон"
                     >
@@ -537,7 +541,7 @@ function LiveTournamentBody({
                     <button
                       onClick={() => toggleTie(selectedReg.id)}
                       disabled={busy}
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                      className={`flex h-10 w-10 items-center justify-center rounded-lg ${
                         tieSelection.has(selectedReg.id)
                           ? "text-[var(--danger)] hover:bg-[var(--danger)]/10"
                           : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
@@ -554,7 +558,7 @@ function LiveTournamentBody({
                     <button
                       onClick={() => eliminate([selectedReg.id])}
                       disabled={busy}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
                       aria-label="Выбыл"
                       title="Выбыл"
                     >
@@ -562,7 +566,7 @@ function LiveTournamentBody({
                     </button>
                     <button
                       onClick={() => setSelectedRegId(null)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
                       aria-label="Закрыть"
                       title="Закрыть"
                     >
@@ -589,7 +593,7 @@ function LiveTournamentBody({
                       {seats.map((r) => (
                         <div
                           key={r.id}
-                          className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[var(--surface-2)]"
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-[var(--surface-2)]"
                         >
                           <div className="flex min-w-0 items-center gap-2.5">
                             <Checkbox
@@ -612,7 +616,7 @@ function LiveTournamentBody({
                             <button
                               onClick={() => openStackAction(r, "rebuy")}
                               disabled={busy}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                              className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
                               aria-label="Ребай"
                               title="Ребай"
                             >
@@ -621,7 +625,7 @@ function LiveTournamentBody({
                             <button
                               onClick={() => openStackAction(r, "addon")}
                               disabled={busy}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                              className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
                               aria-label="Аддон"
                               title="Аддон"
                             >
@@ -630,7 +634,7 @@ function LiveTournamentBody({
                             <button
                               onClick={() => eliminate([r.id])}
                               disabled={busy}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                              className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
                               aria-label="Выбыл"
                               title="Выбыл"
                             >

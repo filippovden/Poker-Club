@@ -23,6 +23,9 @@ export async function setRegistrationStatus(
     .where(eq(registrations.id, id))
     .limit(1);
   if (!registration) return { error: "Заявка не найдена — возможно, уже отозвана" };
+  if (registration.status === "playing" || registration.status === "eliminated") {
+    return { error: "Турнир уже начался — статус игрока нельзя менять как обычную заявку" };
+  }
 
   const [tournament] = await db
     .select()

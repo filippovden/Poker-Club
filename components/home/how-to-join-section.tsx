@@ -16,33 +16,33 @@ export function HowToJoinSection() {
   const phoneHref = SITE_CONTENT.contacts.phone.replace(/[^\d+]/g, "");
 
   return (
-    <section className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
-      <div className="grid gap-10 rounded-2xl border border-[var(--border)] bg-[var(--surface)]/50 p-8 backdrop-blur-sm sm:grid-cols-2 sm:gap-16 sm:p-12">
+    <section className="mx-auto max-w-7xl px-6 py-20 sm:py-32 lg:px-10">
+      <div className="grid gap-10 border-y border-[var(--border)] py-12 sm:grid-cols-[1.25fr_.75fr] sm:gap-20 sm:py-20">
         <Reveal>
-          <span className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--accent)]">
-            Закрытый клуб
+          <span className="royal-section-label">
+            Как попасть за стол
           </span>
-          <h2 className="font-display mt-4 text-[clamp(1.5rem,3.5vw,2.25rem)] font-medium tracking-tight">
-            Как попасть в клуб
+          <h2 className="royal-editorial mt-7 text-[clamp(3rem,5vw,5rem)] leading-[1.03] tracking-[-.055em]">
+            Ваш вечер<br /><em className="font-normal text-[var(--accent)]">начинается здесь.</em>
           </h2>
-          <RevealGroup className="mt-6 flex flex-col gap-4">
+          <RevealGroup className="mt-10 flex flex-col gap-6">
             {STEPS.map((step) => (
-              <RevealItem key={step.n} className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)]/15 text-xs font-medium text-[var(--accent)]">
-                  {step.n}
+              <RevealItem key={step.n} className="flex items-start gap-5">
+                <span className="royal-editorial w-9 shrink-0 text-3xl leading-none text-[var(--accent)]">
+                  0{step.n}
                 </span>
-                <p className="text-sm leading-relaxed text-[var(--foreground)]/85">{step.text}</p>
+                <p className="max-w-md text-sm leading-relaxed text-[var(--foreground)]/85 sm:text-base">{step.text}</p>
               </RevealItem>
             ))}
           </RevealGroup>
-          <Button asChild className="mt-8">
+          <Button asChild size="lg" className="mt-10">
             <Link href="/tournaments">Подать заявку</Link>
           </Button>
         </Reveal>
 
         <Reveal
           delay={0.1}
-          className="flex flex-col justify-center gap-5 border-t border-[var(--border)] pt-8 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-16"
+          className="flex flex-col justify-center gap-7 border-t border-[var(--border)] pt-8 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-12"
         >
           <div>
             <span className="text-xs text-[var(--muted-foreground)]">Адрес зала</span>

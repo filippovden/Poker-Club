@@ -17,7 +17,6 @@ export function CtaButtons() {
           asChild
           size="lg"
           variant="outline"
-          className="border-white/25 text-white hover:border-[var(--accent)] hover:text-[var(--accent)]"
         >
           <Link href="/about">Правила и контакты</Link>
         </Button>

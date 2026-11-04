@@ -32,16 +32,17 @@ export interface TelegramInlineKeyboardButton {
 export interface TelegramUpdate {
   update_id: number;
   message?: {
-    chat: { id: number };
+    chat: { id: number; type?: string };
     text?: string;
-    from?: { username?: string; first_name?: string };
+    from?: { id?: number; username?: string; first_name?: string };
+    contact?: { phone_number: string; user_id?: number };
   };
   callback_query?: {
     id: string;
     data?: string;
     from: { first_name?: string; username?: string };
     message?: {
-      chat: { id: number };
+      chat: { id: number; type?: string };
       message_id: number;
       text?: string;
     };
@@ -66,6 +67,7 @@ async function callApi(method: string, body: Record<string, unknown>, attempt = 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(15000),
       }),
     );
     if (!res.ok) {
@@ -90,10 +92,12 @@ async function callApi(method: string, body: Record<string, unknown>, attempt = 
 export async function sendTelegramMessage(
   chatId: string | number,
   text: string,
-  options?: { buttons?: TelegramInlineKeyboardButton[][]; replyKeyboard?: string[][] },
+  options?: { buttons?: TelegramInlineKeyboardButton[][]; replyKeyboard?: string[][]; requestContact?: boolean },
 ) {
   let replyMarkup: unknown;
-  if (options?.buttons) {
+  if (options?.requestContact) {
+    replyMarkup = { keyboard: [[{ text: "📱 Поделиться своим номером", request_contact: true }], ["↩️ В меню"]], resize_keyboard: true, one_time_keyboard: true };
+  } else if (options?.buttons) {
     replyMarkup = { inline_keyboard: options.buttons };
   } else if (options?.replyKeyboard) {
     replyMarkup = { keyboard: options.replyKeyboard, resize_keyboard: true };
@@ -105,6 +109,15 @@ export async function sendTelegramMessage(
     reply_markup: replyMarkup,
   })) as { result?: { message_id: number } } | null;
   return result?.result;
+}
+
+export async function configureMiniAppMenu() {
+  const url = process.env.TELEGRAM_MINI_APP_URL;
+  if (!url) return;
+  if (!/^https:\/\//.test(url)) throw new Error("TELEGRAM_MINI_APP_URL must be HTTPS");
+  await callApi("setChatMenuButton", {
+    menu_button: { type: "web_app", text: "Открыть клуб", web_app: { url } },
+  });
 }
 
 export async function sendTelegramPhoto(

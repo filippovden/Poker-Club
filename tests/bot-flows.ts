@@ -1,0 +1,88 @@
+import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+async function main() {
+  const originalCwd = process.cwd();
+  const temp = mkdtempSync(join(tmpdir(), "royal-bot-test-"));
+  process.chdir(temp);
+  process.env.TELEGRAM_BOT_TOKEN = "local-test-only";
+  delete process.env.TELEGRAM_ADMIN_CHAT_ID;
+  const sent: { method: string; body: Record<string, any>; id: number }[] = [];
+  let messageId = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    const id = ++messageId;
+    sent.push({ method: String(url).split('/').pop()!, body: JSON.parse(String(options?.body)), id });
+    return new Response(JSON.stringify({ ok: true, result: { message_id: id } }), { status: 200 });
+  };
+  try {
+    const { db } = await import('../lib/db/client');
+    const { tournaments, registrations, players, ratingHistory } = await import('../lib/db/schema');
+    const { eq } = await import('drizzle-orm');
+    const { handleUpdate } = await import('../lib/telegram/bot');
+    const { createRegistration } = await import('../lib/registrations/create');
+    const { buildMyRegistrationsMessage } = await import('../lib/telegram/messages');
+    const [t] = await db.insert(tournaments).values({ title: 'Test <NLH>', format: 'NLH', startsAt: '2027-01-01T15:00:00Z', maxPlayers: 20 }).returning();
+    const [hidden] = await db.insert(tournaments).values({ title: 'Hidden', format: 'NLH', startsAt: '2027-01-01T15:00:00Z', isHidden: true }).returning();
+    const msg = (text: string) => handleUpdate({update_id: 1, message: {chat:{id:123,type:'private'},from:{id:123},text}});
+    const cb = (data: string, id=1) => handleUpdate({update_id:2, callback_query:{id:'q',data,from:{username:'tester'},message:{chat:{id:123},message_id:id,text:'Test <NLH>'}}});
+    await msg('✍️ Подать заявку');
+    await msg('Анна');
+    assert(sent.at(-1)?.body.reply_markup.keyboard[0][0].request_contact);
+    await msg('12345');
+    assert.match(sent.at(-1)?.body.text,/некорректный/);
+    await handleUpdate({update_id:3,message:{chat:{id:123},from:{id:123},contact:{phone_number:'+79990000001',user_id:999}}});
+    assert.match(sent.at(-1)?.body.text,/своим контактом/);
+    await handleUpdate({update_id:5,message:{chat:{id:123},from:{id:123},contact:{phone_number:'8 (999) 000-00-01',user_id:123}}});
+    const summaryId = sent.at(-1)!.id;
+    await cb('apply_confirm',summaryId-1);
+    assert.equal((await db.select().from(registrations)).length,0,'old button cannot submit');
+    await cb('apply_confirm',summaryId);
+    let rows = await db.select().from(registrations);
+    assert.equal(rows.length,1);
+    assert.equal(rows[0].phone,'+79990000001');
+    await msg('/cancel');
+    assert.equal((await db.select().from(registrations)).length,1,'command only opens selection');
+    await cb(`cancel:${rows[0].id}`);
+    assert.equal((await db.select().from(registrations)).length,1,'first tap only asks confirmation');
+    await cb('cancel_keep');
+    assert.equal((await db.select().from(registrations)).length,1);
+    const duplicate = await createRegistration({tournamentId:t.id,name:'Анна',phone:'89990000001'});
+    assert(duplicate.error,'formatted duplicate phone rejected');
+    const hiddenResult = await createRegistration({tournamentId:hidden.id,name:'Анна',phone:'+79990000002'});
+    assert(hiddenResult.error,'hidden tournament cannot be registered');
+    await db.update(registrations).set({status:'playing',tableNumber:2,seatNumber:5}).where(eq(registrations.id,rows[0].id));
+    await cb(`cancel_confirm:${rows[0].id}`);
+    assert.equal((await db.select().from(registrations)).length,1,'stale cancellation cannot delete playing registration');
+    await msg('/status');
+    assert(sent.some(x=>/Стол 2, место 5/.test(x.body.text??'')));
+    await msg('/profile');
+    assert.match(sent.at(-1)?.body.text,/после первого завершённого турнира/);
+    const [player] = await db.insert(players).values({phone:'+79990000001',name:'Анна <Royal63>',telegramChatId:'123',rating:1042,tournamentsPlayed:1}).returning();
+    await db.insert(ratingHistory).values({playerId:player.id,tournamentId:t.id,oldRating:1000,newRating:1042,place:1,pointsEarned:42});
+    await msg('/rating');
+    assert.match(sent.at(-1)?.body.text,/Анна &lt;Royal63&gt;/);
+    assert.doesNotMatch(sent.at(-1)?.body.text,/79990000001/);
+    await msg('/profile');
+    assert.match(sent.at(-1)?.body.text,/1042 очков/);
+    assert.match(sent.at(-1)?.body.text,/1-е место, \+42 очков/);
+    assert.match(buildMyRegistrationsMessage([{tournament:t,status:'eliminated',place:3}]),/Итоговое место: 3/);
+    await db.update(registrations).set({status:'pending'}).where(eq(registrations.id,rows[0].id));
+    await cb(`cancel_confirm:${rows[0].id}`);
+    assert.equal((await db.select().from(registrations)).length,0);
+    await msg('✍️ Подать заявку');
+    await msg('/cancel');
+    assert.match(sent.at(-1)?.body.text,/Ранее отправленные заявки сохранены/);
+    const before = sent.length;
+    await handleUpdate({update_id:4,message:{chat:{id:-123,type:'group'},text:'/start'}});
+    assert.equal(sent.length,before,'private flow does not run in a group');
+    console.log('PASS: application, contact sharing, validation, stale buttons, cancellation, duplicate identity, hidden tournaments, seating, rating/profile and group isolation');
+  } finally {
+    globalThis.fetch = originalFetch;
+    process.chdir(originalCwd);
+    rmSync(temp,{recursive:true,force:true});
+  }
+}
+main().catch(error=>{console.error(error);process.exitCode=1;});

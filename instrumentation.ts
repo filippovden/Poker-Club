@@ -6,7 +6,8 @@ export async function register() {
   const { seedAdmin, seedSampleData } = await import("./lib/db/seed-data");
   try {
     await seedAdmin();
-    await seedSampleData();
+    // Demo records must never appear on a fresh production installation.
+    if (process.env.NODE_ENV !== "production") await seedSampleData();
   } catch (err) {
     console.error("[instrumentation] Seeding failed:", err);
   }

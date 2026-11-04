@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { RevealGroup, RevealItem } from "@/components/reveal";
 import type { Player } from "@/lib/db/schema";
 
+type PublicPlayer = Pick<Player, "id" | "name" | "rating" | "tournamentsPlayed">;
+
 const PAGE_SIZE = 20;
 
-export function RatingListClient({ players }: { players: Player[] }) {
+export function RatingListClient({ players }: { players: PublicPlayer[] }) {
   const [query, setQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 

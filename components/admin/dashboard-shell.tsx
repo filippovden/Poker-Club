@@ -2,7 +2,8 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Users, Command as CommandIcon, Copy, PlayCircle, QrCode, Megaphone } from "lucide-react";
+import Link from "next/link";
+import { Plus, Pencil, Trash2, Users, Command as CommandIcon, Copy, PlayCircle, QrCode, Megaphone, MonitorPlay } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,7 @@ import { LiveTournamentDialog } from "./live-tournament-dialog";
 import { CheckinQrDialog } from "./checkin-qr-dialog";
 import { AnnouncementDialog } from "./announcement-dialog";
 import { StatsPanel } from "./stats-panel";
-import type { TournamentStatsRow, PlayerStatsRow } from "@/lib/db/stats";
+import type { TournamentStatsRow, PlayerStatsRow, TournamentLedgerRow } from "@/lib/db/stats";
 import {
   createTournamentAction,
   updateTournamentAction,
@@ -45,6 +46,7 @@ export function DashboardShell({
   statusCounts = {},
   tournamentStats = [],
   playerStats = [],
+  ledger = [],
 }: {
   tournaments: Tournament[];
   news: NewsArticle[];
@@ -52,6 +54,7 @@ export function DashboardShell({
   statusCounts?: Record<number, { pending: number; approved: number; rejected: number }>;
   tournamentStats?: TournamentStatsRow[];
   playerStats?: PlayerStatsRow[];
+  ledger?: TournamentLedgerRow[];
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<"tournaments" | "news" | "stats">("tournaments");
@@ -222,17 +225,17 @@ export function DashboardShell({
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto max-w-6xl px-6 py-10">
       <CommandPalette
         onNewTournament={openNewTournament}
         onNewNews={openNewNews}
         onTabChange={setTab}
       />
 
-      <header className="mb-10 flex items-center justify-between">
+      <header className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <LogoMark className="h-6 w-6 text-[var(--foreground)]" />
-          <span className="font-display text-sm font-medium">Панель организатора</span>
+          <span className="font-display text-lg font-semibold">Royal63 · управление</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden text-xs text-[var(--muted-foreground)] sm:inline">
@@ -254,17 +257,26 @@ export function DashboardShell({
         </div>
       </header>
 
+      <div className="mb-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">Рабочее место организатора</p>
+        <h1 className="font-display mt-2 text-2xl font-semibold sm:text-3xl">Турниры, игроки и результаты</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">
+          Создайте турнир, обработайте заявки, отметьте пришедших, проведите игру и зафиксируйте места. Учёт и рейтинг обновятся после завершения.
+        </p>
+      </div>
+
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <div className="mb-6 flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="tournaments">Турниры</TabsTrigger>
-            <TabsTrigger value="news">Новости</TabsTrigger>
-            <TabsTrigger value="stats">Статистика</TabsTrigger>
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <TabsList className="grid w-full grid-cols-3 sm:inline-flex sm:w-auto">
+            <TabsTrigger value="tournaments" className="mr-0 px-1 text-center sm:mr-4">Турниры</TabsTrigger>
+            <TabsTrigger value="news" className="mr-0 px-1 text-center sm:mr-4">Новости</TabsTrigger>
+            <TabsTrigger value="stats" className="mr-0 px-1 text-center sm:mr-4"><span className="sm:hidden">Рейтинг</span><span className="hidden sm:inline">Учёт и рейтинг</span></TabsTrigger>
           </TabsList>
           {tab !== "stats" && (
             <Button
               size="sm"
               data-testid="add-item-button"
+              className="w-full sm:w-auto"
               onClick={tab === "tournaments" ? openNewTournament : openNewNews}
             >
               <Plus className="h-4 w-4" />
@@ -341,35 +353,38 @@ export function DashboardShell({
                       </p>
                     </div>
                   </div>
-                  <div className="flex shrink-0 gap-1 self-end sm:self-auto">
+                  <div className="flex flex-wrap gap-2 self-stretch sm:self-auto">
                     <button
                       onClick={() => {
                         setRegistrationsTournamentId(t.id);
                         setRegistrationsDialogOpen(true);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-xs font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]"
                       aria-label="Заявки"
                       title="Заявки"
                     >
-                      <Users className="h-3.5 w-3.5" />
+                      <Users className="h-3.5 w-3.5" /> Заявки
                     </button>
                     <button
                       onClick={() => {
                         setLiveTournamentId(t.id);
                         setLiveDialogOpen(true);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-xs font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]"
                       aria-label="Ход турнира"
                       title="Ход турнира"
                     >
-                      <PlayCircle className="h-3.5 w-3.5" />
+                      <PlayCircle className="h-3.5 w-3.5" /> Ход игры
                     </button>
+                    <Link href={`/admin/tournament/${t.id}`} className="flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--accent)]/40 px-3 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10" title="Таймер и экран для зала">
+                      <MonitorPlay className="h-3.5 w-3.5" /> Пульт и экран
+                    </Link>
                     <button
                       onClick={() => {
                         setCheckinQrTournamentId(t.id);
                         setCheckinQrOpen(true);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
                       aria-label="QR для входа"
                       title="QR для входа"
                     >
@@ -380,7 +395,7 @@ export function DashboardShell({
                         setAnnounceTournamentId(t.id);
                         setAnnounceOpen(true);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
                       aria-label="Объявление в Telegram"
                       title="Объявление в Telegram"
                     >
@@ -394,14 +409,14 @@ export function DashboardShell({
                         setTournamentFormKey((k) => k + 1);
                         setTournamentDialogOpen(true);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
                       aria-label="Изменить"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => duplicateTournament(t)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
                       aria-label="Дублировать (на неделю позже)"
                       title="Дублировать (на неделю позже)"
                     >
@@ -409,7 +424,7 @@ export function DashboardShell({
                     </button>
                     <button
                       onClick={() => removeTournament(t)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
                       aria-label="Удалить"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -448,14 +463,14 @@ export function DashboardShell({
                         setNewsError(undefined);
                         setNewsDialogOpen(true);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
                       aria-label="Изменить"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => removeNews(item)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
                       aria-label="Удалить"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -468,7 +483,7 @@ export function DashboardShell({
         </TabsContent>
 
         <TabsContent value="stats">
-          <StatsPanel tournamentStats={tournamentStats} playerStats={playerStats} />
+          <StatsPanel tournamentStats={tournamentStats} playerStats={playerStats} ledger={ledger} />
         </TabsContent>
       </Tabs>
 

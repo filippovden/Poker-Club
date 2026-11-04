@@ -5,10 +5,11 @@ import { and, eq, gt, isNotNull, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
-import { registrations, tournaments } from "@/lib/db/schema";
+import { registrations, tournamentClocks, tournaments } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
 import { announceNewTournament } from "@/lib/telegram/broadcast";
 import { samaraWallClockToUtcIso } from "@/lib/timezone";
+import { elapsedAt } from "@/lib/tournament-clock";
 
 const tournamentSchema = z
   .object({
@@ -188,6 +189,10 @@ export async function updateTournamentAction(
     return { error: parsed.error.issues[0]?.message || "Некорректные данные" };
   }
 
+  if (parsed.data.status === "completed") {
+    const [clock] = await db.select().from(tournamentClocks).where(eq(tournamentClocks.tournamentId, id)).limit(1);
+    if (clock?.runningSince) await db.update(tournamentClocks).set({ elapsedSeconds: elapsedAt(Date.now(), clock.elapsedSeconds, clock.runningSince), runningSince: null }).where(eq(tournamentClocks.tournamentId, id));
+  }
   await db
     .update(tournaments)
     .set(withComputedCapacity({ ...parsed.data, startsAt: samaraWallClockToUtcIso(parsed.data.startsAt) }))

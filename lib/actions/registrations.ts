@@ -10,6 +10,7 @@ import {
   ratingHistory,
   registrations,
   tournamentActions,
+  tournamentClocks,
   tournaments,
   type Registration,
   type Tournament,
@@ -23,6 +24,7 @@ import { planBalancedSeats, shuffle } from "@/lib/tournaments/seating";
 import { computeRatingChange } from "@/lib/tournaments/rating";
 import { normalizePhone } from "@/lib/phone";
 import type { ActionResult } from "@/lib/actions/tournaments";
+import { elapsedAt } from "@/lib/tournament-clock";
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Введите имя").max(120),
@@ -119,8 +121,8 @@ export async function cancelRegistrationAction(token: string) {
 }
 
 export interface LookupResultItem {
-  registration: Registration;
-  tournament: Tournament;
+  registration: Pick<Registration, "id" | "name" | "status" | "tableNumber" | "seatNumber" | "checkedIn" | "place">;
+  tournament: Pick<Tournament, "id" | "title" | "startsAt" | "status">;
 }
 
 export interface LookupResult {
@@ -128,11 +130,9 @@ export interface LookupResult {
   items?: LookupResultItem[];
 }
 
-// Self-service status lookup for anyone who applied without ever linking
-// Telegram (or lost the one-off cancel link) — phone + name is not a real
-// secret (either could be guessed), so this is a convenience lookup, not
-// an account login; nothing here is more sensitive than what the person
-// already handed over at registration time.
+// Self-service status lookup for anyone who applied without linking Telegram.
+// Name + phone is only a convenience check, so return a small public view:
+// never include the cancellation token, email, comment, or Telegram ID.
 export async function lookupRegistrationsAction(phone: string, name: string): Promise<LookupResult> {
   const normalizedPhone = normalizePhone(phone);
   const normalizedName = name.trim().toLowerCase();
@@ -164,7 +164,20 @@ export async function lookupRegistrationsAction(phone: string, name: string): Pr
   const items = matches
     .map((r) => {
       const t = tournamentById.get(r.tournamentId);
-      return t && !t.isHidden ? { registration: r, tournament: t } : null;
+      return t && !t.isHidden
+        ? {
+            registration: {
+              id: r.id,
+              name: r.name,
+              status: r.status,
+              tableNumber: r.tableNumber,
+              seatNumber: r.seatNumber,
+              checkedIn: r.checkedIn,
+              place: r.place,
+            },
+            tournament: { id: t.id, title: t.title, startsAt: t.startsAt, status: t.status },
+          }
+        : null;
     })
     .filter((item): item is LookupResultItem => item !== null)
     .sort((a, b) => new Date(b.tournament.startsAt).getTime() - new Date(a.tournament.startsAt).getTime());
@@ -235,19 +248,18 @@ export async function adminSearchParticipants(query: string): Promise<Participan
   if (!q) return [];
   const digitsQ = normalizePhone(query);
 
-  const rows = await db
-    .select({
-      id: registrations.id,
-      name: registrations.name,
-      phone: registrations.phone,
-      status: registrations.status,
-      createdAt: registrations.createdAt,
-      tournamentId: tournaments.id,
-      tournamentTitle: tournaments.title,
-    })
-    .from(registrations)
-    .innerJoin(tournaments, eq(registrations.tournamentId, tournaments.id))
-    .orderBy(desc(registrations.createdAt));
+  const [allRegistrations, allTournaments] = await Promise.all([
+    db.select().from(registrations).orderBy(desc(registrations.createdAt)),
+    db.select({ id: tournaments.id, title: tournaments.title }).from(tournaments),
+  ]);
+  const tournamentById = new Map(allTournaments.map((t) => [t.id, t.title]));
+  const rows = allRegistrations.flatMap((r): ParticipantSearchRow[] => {
+    const tournamentTitle = tournamentById.get(r.tournamentId);
+    return tournamentTitle ? [{
+      id: r.id, name: r.name, phone: r.phone, status: r.status,
+      createdAt: r.createdAt, tournamentId: r.tournamentId, tournamentTitle,
+    }] : [];
+  });
 
   return rows.filter(
     (r) =>
@@ -272,21 +284,19 @@ export interface TournamentActionRow {
 // read side, for the "История действий" list in the live tournament view.
 export async function adminListTournamentActions(tournamentId: number): Promise<TournamentActionRow[]> {
   await requireAdmin();
-  const rows = await db
-    .select({
-      id: tournamentActions.id,
-      playerName: registrations.name,
-      adminUsername: tournamentActions.adminUsername,
-      type: tournamentActions.type,
-      chips: tournamentActions.chips,
-      money: tournamentActions.money,
-      createdAt: tournamentActions.createdAt,
-    })
-    .from(tournamentActions)
-    .innerJoin(registrations, eq(tournamentActions.registrationId, registrations.id))
-    .where(eq(tournamentActions.tournamentId, tournamentId))
-    .orderBy(desc(tournamentActions.createdAt));
-  return rows;
+  const [actions, allRegistrations] = await Promise.all([
+    db.select().from(tournamentActions).where(eq(tournamentActions.tournamentId, tournamentId)).orderBy(desc(tournamentActions.createdAt)),
+    db.select({ id: registrations.id, name: registrations.name }).from(registrations).where(eq(registrations.tournamentId, tournamentId)),
+  ]);
+  const nameById = new Map(allRegistrations.map((r) => [r.id, r.name]));
+  return actions.flatMap((action): TournamentActionRow[] => {
+    const playerName = nameById.get(action.registrationId);
+    return playerName ? [{
+      id: action.id, playerName, adminUsername: action.adminUsername,
+      type: action.type, chips: action.chips, money: action.money,
+      createdAt: action.createdAt,
+    }] : [];
+  });
 }
 
 export async function adminRemoveRegistration(id: number) {
@@ -762,6 +772,8 @@ export async function adminFinishTournament(tournamentId: number): Promise<Finis
     // they must never touch the real players/rating tables, or fake test
     // names would show up in the public rating.
     if (tournament.isHidden) {
+      const [clock] = await db.select().from(tournamentClocks).where(eq(tournamentClocks.tournamentId, tournamentId)).limit(1);
+      if (clock?.runningSince) await db.update(tournamentClocks).set({ elapsedSeconds: elapsedAt(Date.now(), clock.elapsedSeconds, clock.runningSince), runningSince: null }).where(eq(tournamentClocks.tournamentId, tournamentId));
       await db.update(tournaments).set({ status: "completed" }).where(eq(tournaments.id, tournamentId));
       revalidatePath("/tournaments");
       revalidatePath("/admin/dashboard");
@@ -771,6 +783,8 @@ export async function adminFinishTournament(tournamentId: number): Promise<Finis
     const result = await applyRatingForTournament(tournamentId);
     if (result.error) return result;
 
+    const [clock] = await db.select().from(tournamentClocks).where(eq(tournamentClocks.tournamentId, tournamentId)).limit(1);
+    if (clock?.runningSince) await db.update(tournamentClocks).set({ elapsedSeconds: elapsedAt(Date.now(), clock.elapsedSeconds, clock.runningSince), runningSince: null }).where(eq(tournamentClocks.tournamentId, tournamentId));
     await db.update(tournaments).set({ status: "completed" }).where(eq(tournaments.id, tournamentId));
 
     revalidatePath("/tournaments");

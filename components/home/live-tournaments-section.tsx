@@ -24,14 +24,14 @@ export async function LiveTournamentsSection() {
   ]);
 
   return (
-    <section className="border-y border-[var(--border)] bg-[var(--surface)]/40 py-24 sm:py-32">
+    <section className="border-b border-[var(--border)] bg-[var(--surface)] py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-6">
         <Reveal className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <span className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--accent)]">
               Расписание
             </span>
-            <h2 className="font-display mt-4 text-[clamp(1.75rem,4vw,3rem)] font-medium tracking-tight">
+            <h2 className="royal-editorial mt-4 text-[clamp(2.3rem,4vw,3.5rem)] font-normal tracking-tight">
               Ближайшие турниры
             </h2>
           </div>

@@ -1,11 +1,12 @@
 import { and, asc, count, desc, eq, inArray, not } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { registrations, tournaments, type Tournament } from "@/lib/db/schema";
+import { players, ratingHistory, registrations, tournaments, type Tournament } from "@/lib/db/schema";
 import { setRegistrationStatus } from "@/lib/registrations/set-status";
 import { createRegistration } from "@/lib/registrations/create";
 import { normalizePhone } from "@/lib/phone";
 import {
   answerCallbackQuery,
+  configureMiniAppMenu,
   editMessageText,
   getTelegramUpdates,
   sendTelegramMessage,
@@ -15,10 +16,12 @@ import {
   buildAdminCancelledMessage,
   buildAdminSearchResultsMessage,
   buildApplicationSummaryMessage,
+  buildHelpMessage,
   buildMyRegistrationsMessage,
   buildNextTournamentMessage,
   buildParticipantsListMessage,
   buildRegisteredMessage,
+  escapeHtml,
   formatDateOnly,
   formatTimeOnly,
   ADMIN_MENU_KEYBOARD,
@@ -168,6 +171,7 @@ interface PendingApplication {
   tournamentId: number;
   name?: string;
   phone?: string;
+  summaryMessageId?: number;
 }
 
 // Kept in memory only — if the server restarts mid-conversation the user
@@ -181,7 +185,7 @@ async function startApplication(chatId: number, tournamentId?: number, skipReuse
   const tournament = tournamentId
     ? await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1).then((r) => r[0])
     : await getNextTournament();
-  if (!tournament) {
+  if (!tournament || tournament.isHidden || tournament.status === "completed") {
     await sendTelegramMessage(
       chatId,
       tournamentId ? "Этот турнир больше недоступен." : "Сейчас нет турниров, на которые можно записаться.",
@@ -207,7 +211,7 @@ async function startApplication(chatId: number, tournamentId?: number, skipReuse
       name: previous.name,
       phone: previous.phone,
     });
-    await sendTelegramMessage(
+    const summary = await sendTelegramMessage(
       chatId,
       buildApplicationSummaryMessage({ name: previous.name, phone: previous.phone, tournament }),
       {
@@ -218,11 +222,13 @@ async function startApplication(chatId: number, tournamentId?: number, skipReuse
         ],
       },
     );
+    const pending = pendingApplications.get(chatId);
+    if (pending) pending.summaryMessageId = summary?.message_id;
     return;
   }
 
   pendingApplications.set(chatId, { step: "name", tournamentId: tournament.id });
-  await sendTelegramMessage(chatId, "Как вас зовут?", { buttons: ABORT_BUTTON });
+  await sendTelegramMessage(chatId, "Шаг 1 из 3 · Как вас зовут?\nВведите имя или игровой ник (2–80 символов).", { buttons: ABORT_BUTTON });
 }
 
 // Entry point for "✍️ Подать заявку" — shows a tournament picker rather
@@ -251,21 +257,21 @@ async function continueApplication(chatId: number, text: string) {
   if (!state) return;
 
   if (state.step === "name") {
-    if (text.trim().length < 2) {
-      await sendTelegramMessage(chatId, "Имя слишком короткое, попробуйте ещё раз:", {
+    if (text.trim().length < 2 || text.trim().length > 80) {
+      await sendTelegramMessage(chatId, "Введите имя длиной от 2 до 80 символов:", {
         buttons: ABORT_BUTTON,
       });
       return;
     }
     state.name = text.trim();
     state.step = "phone";
-    await sendTelegramMessage(chatId, "Ваш номер телефона?", { buttons: ABORT_BUTTON });
+    await sendTelegramMessage(chatId, "Шаг 2 из 3 · Ваш телефон\nНажмите кнопку ниже или введите номер вручную.", { requestContact: true });
     return;
   }
 
   if (state.step === "phone") {
     const phone = text.trim();
-    if (phone.length < 5 || !/^[\d\s()+-]+$/.test(phone)) {
+    if (!/^[\d\s()+-]+$/.test(phone) || !/^(?:[78])?\d{10}$/.test(phone.replace(/\D/g, ""))) {
       await sendTelegramMessage(
         chatId,
         "Похоже на некорректный номер телефона, попробуйте ещё раз:",
@@ -273,7 +279,7 @@ async function continueApplication(chatId: number, text: string) {
       );
       return;
     }
-    state.phone = phone;
+    state.phone = "+7" + normalizePhone(phone);
     state.step = "consent";
 
     const tournament = await db
@@ -288,16 +294,19 @@ async function continueApplication(chatId: number, text: string) {
       return;
     }
 
-    await sendTelegramMessage(
+    await sendTelegramMessage(chatId, "Шаг 3 из 3 · Проверьте заявку", { replyKeyboard: MAIN_MENU_KEYBOARD });
+    const summary = await sendTelegramMessage(
       chatId,
       buildApplicationSummaryMessage({ name: state.name!, phone: state.phone, tournament }),
       {
         buttons: [
           [{ text: "✅ Отправить заявку", callback_data: "apply_confirm" }],
+          [{ text: "✏️ Изменить данные", callback_data: "apply_restart" }],
           [{ text: "Отмена", callback_data: "apply_abort" }],
         ],
       },
     );
+    state.summaryMessageId = summary?.message_id;
   }
 }
 
@@ -331,6 +340,45 @@ async function confirmApplication(chatId: number, telegramUsername?: string) {
 
 // --- menu actions --------------------------------------------------------
 
+async function handleClubRating(chatId: number) {
+  const leaders = await db.select({ name: players.name, rating: players.rating, tournamentsPlayed: players.tournamentsPlayed })
+    .from(players).orderBy(desc(players.rating), asc(players.name)).limit(5);
+  if (leaders.length === 0) {
+    await sendTelegramMessage(chatId, "Рейтинг появится после первого завершённого турнира.", { replyKeyboard: MAIN_MENU_KEYBOARD });
+    return;
+  }
+  let place = 0;
+  let previousRating: number | null = null;
+  const lines = leaders.map((player) => {
+    if (player.rating !== previousRating) place++;
+    previousRating = player.rating;
+    return `${place}. <b>${escapeHtml(player.name)}</b> — ${Math.round(player.rating)} очков · ${player.tournamentsPlayed} турн.`;
+  });
+  await sendTelegramMessage(chatId, `<b>🏆 Рейтинг Royal63</b>\n\n${lines.join("\n")}\n\nПолная таблица и история — на сайте клуба.`, { replyKeyboard: MAIN_MENU_KEYBOARD });
+}
+
+async function handleMyRating(chatId: number) {
+  const [player] = await db.select().from(players)
+    .where(eq(players.telegramChatId, String(chatId)))
+    .orderBy(desc(players.updatedAt)).limit(1);
+  if (!player) {
+    await sendTelegramMessage(chatId, "Ваш рейтинг появится здесь после первого завершённого турнира. Если вы уже играли, попросите организатора связать заявку с этим Telegram-аккаунтом.", { replyKeyboard: MAIN_MENU_KEYBOARD });
+    return;
+  }
+  const recent = await db.select({ tournamentId: ratingHistory.tournamentId, place: ratingHistory.place, points: ratingHistory.pointsEarned })
+    .from(ratingHistory).where(eq(ratingHistory.playerId, player.id)).orderBy(desc(ratingHistory.createdAt)).limit(3);
+  const tournamentsById = new Map((await Promise.all(recent.map(async (result) => {
+    const [tournament] = await db.select({ id: tournaments.id, title: tournaments.title }).from(tournaments).where(eq(tournaments.id, result.tournamentId)).limit(1);
+    return tournament;
+  }))).filter((item) => item != null).map((item) => [item.id, item.title]));
+  const history = recent.map((result) => `• ${escapeHtml(tournamentsById.get(result.tournamentId) ?? "Турнир")} — ${result.place}-е место, ${result.points >= 0 ? "+" : ""}${Math.round(result.points)} очков`);
+  await sendTelegramMessage(chatId,
+    `<b>👤 ${escapeHtml(player.name)}</b>\n🏆 ${Math.round(player.rating)} очков · ${player.tournamentsPlayed} турн.` +
+    (history.length ? `\n\n<b>Последние результаты</b>\n${history.join("\n")}` : ""),
+    { replyKeyboard: MAIN_MENU_KEYBOARD },
+  );
+}
+
 async function handleMyRegistrations(chatId: number) {
   const rows = await db
     .select()
@@ -344,11 +392,11 @@ async function handleMyRegistrations(chatId: number) {
         .from(tournaments)
         .where(eq(tournaments.id, r.tournamentId))
         .limit(1);
-      return tournament ? { tournament, status: r.status } : null;
+      return tournament ? { tournament, status: r.status, tableNumber: r.tableNumber, seatNumber: r.seatNumber, place: r.place } : null;
     }),
   );
 
-  await sendTelegramMessage(
+  await sendPossiblyLongMessage(
     chatId,
     buildMyRegistrationsMessage(withTournaments.filter((r) => r !== null)),
     { replyKeyboard: MAIN_MENU_KEYBOARD },
@@ -374,6 +422,7 @@ async function handleNextTournamentInfo(chatId: number) {
   }
   const spotsLeft = await getSpotsLeft(tournament);
   await sendTelegramMessage(chatId, buildNextTournamentMessage(tournament, spotsLeft), {
+    buttons: spotsLeft === null || spotsLeft > 0 ? [[{ text: "✍️ Записаться на этот турнир", callback_data: `apply_start:${tournament.id}` }]] : undefined,
     replyKeyboard: MAIN_MENU_KEYBOARD,
   });
 }
@@ -394,16 +443,7 @@ async function handleCancelCommand(chatId: number) {
     return;
   }
 
-  if (active.length === 1) {
-    await db.delete(registrations).where(eq(registrations.id, active[0].id));
-    await sendTelegramMessage(
-      chatId,
-      "Заявка отозвана. Если передумаете — можно подать новую на странице турниров.",
-    );
-    return;
-  }
-
-  await sendTelegramMessage(chatId, "У вас несколько активных заявок. Какую отменить?", {
+  await sendTelegramMessage(chatId, "Выберите заявку для отмены. На следующем шаге попросим подтверждение.", {
     buttons: await buildCancelButtons(active),
   });
 }
@@ -432,6 +472,11 @@ async function handleStart(chatId: number, token: string | undefined, telegramUs
       "Не нашли вашу заявку — возможно, ссылка устарела или заявка уже отозвана.",
       { replyKeyboard: MAIN_MENU_KEYBOARD },
     );
+    return;
+  }
+
+  if (registration.telegramChatId && registration.telegramChatId !== String(chatId)) {
+    await sendTelegramMessage(chatId, "Заявка уже связана с другим Telegram-аккаунтом. Обратитесь к организатору.", { replyKeyboard: MAIN_MENU_KEYBOARD });
     return;
   }
 
@@ -562,7 +607,7 @@ async function handleAdminMessage(chatId: number, text: string) {
     await sendTelegramMessage(chatId, "Введите имя, телефон, @username или Telegram ID игрока:");
     return;
   }
-  if (/^\/start\b/.test(text)) {
+  if (/^\/(start|help)\b/.test(text)) {
     await sendTelegramMessage(chatId, "Меню организатора Royal63.", {
       replyKeyboard: ADMIN_MENU_KEYBOARD,
     });
@@ -576,9 +621,14 @@ function isMenuCommand(text: string) {
 }
 
 async function handleMessage(update: TelegramUpdate) {
-  const text = update.message?.text?.trim();
+  const contact = update.message?.contact;
+  const text = update.message?.text?.trim() ?? contact?.phone_number;
   const chatId = update.message?.chat.id;
   if (!text || !chatId) return;
+  if (contact && contact.user_id !== update.message?.from?.id) {
+    await sendTelegramMessage(chatId, "Поделитесь своим контактом или введите номер вручную.");
+    return;
+  }
 
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
   if (adminChatId && String(chatId) === String(adminChatId)) {
@@ -586,6 +636,16 @@ async function handleMessage(update: TelegramUpdate) {
     return;
   }
 
+  if (chatId < 0) return; // Player flows contain private contact details.
+  if (contact && pendingApplications.get(chatId)?.step !== "phone") {
+    await sendTelegramMessage(chatId, "Выберите турнир через меню, затем отправьте имя и телефон по шагам.", { replyKeyboard: MAIN_MENU_KEYBOARD });
+    return;
+  }
+  if (pendingApplications.has(chatId) && /^\/cancel\b/.test(text)) {
+    pendingApplications.delete(chatId);
+    await sendTelegramMessage(chatId, "Заполнение заявки отменено. Ранее отправленные заявки сохранены.", { replyKeyboard: MAIN_MENU_KEYBOARD });
+    return;
+  }
   if (pendingApplications.has(chatId) && !isMenuCommand(text)) {
     await continueApplication(chatId, text);
     return;
@@ -601,6 +661,26 @@ async function handleMessage(update: TelegramUpdate) {
     await handleCancelCommand(chatId);
     return;
   }
+  if (/^\/status\b/.test(text)) {
+    await handleMyRegistrations(chatId);
+    return;
+  }
+  if (/^\/profile\b/.test(text) || text === MENU_LABELS.myRating) {
+    await handleMyRating(chatId);
+    return;
+  }
+  if (/^\/rating\b/.test(text) || text === MENU_LABELS.rating) {
+    await handleClubRating(chatId);
+    return;
+  }
+  if (/^\/tournaments\b/.test(text) || text === MENU_LABELS.tournaments) {
+    await handleApplyMenu(chatId);
+    return;
+  }
+  if (text === MENU_LABELS.menu || /^\/menu\b/.test(text)) {
+    await handleStart(chatId, undefined);
+    return;
+  }
   if (text === MENU_LABELS.myRegistrations) {
     await handleMyRegistrations(chatId);
     return;
@@ -611,6 +691,10 @@ async function handleMessage(update: TelegramUpdate) {
   }
   if (text === MENU_LABELS.apply) {
     await handleApplyMenu(chatId);
+    return;
+  }
+  if (text === MENU_LABELS.help || /^\/help\b/.test(text)) {
+    await sendTelegramMessage(chatId, buildHelpMessage(), { replyKeyboard: MAIN_MENU_KEYBOARD });
     return;
   }
 
@@ -646,11 +730,11 @@ async function handleApproveRejectCallback(
 
   const decisionLabel = status === "approved" ? "✅ Подтверждено" : "❌ Отклонено";
   const decidedBy = query.from.first_name ?? query.from.username ?? "";
-  const originalText = query.message.text ?? "";
+  const originalText = escapeHtml(query.message.text ?? "");
   await editMessageText(
     query.message.chat.id,
     query.message.message_id,
-    `${originalText}\n\n${decisionLabel}${decidedBy ? ` — ${decidedBy}` : ""}`,
+    `${originalText}\n\n${decisionLabel}${decidedBy ? ` — ${escapeHtml(decidedBy)}` : ""}`,
     { removeButtons: true },
   );
 }
@@ -661,6 +745,7 @@ async function handleApproveRejectCallback(
 async function handleCancelCallback(
   query: NonNullable<TelegramUpdate["callback_query"]>,
   id: number,
+  confirmed = false,
 ) {
   if (!query.message) return;
   const chatId = query.message.chat.id;
@@ -676,7 +761,21 @@ async function handleCancelCallback(
     return;
   }
 
-  await db.delete(registrations).where(eq(registrations.id, id));
+  if (registration.status === "playing" || registration.status === "eliminated") {
+    await answerCallbackQuery(query.id, "Турнир уже начался — обратитесь к организатору");
+    return;
+  }
+
+  if (!confirmed) {
+    const [t] = await db.select().from(tournaments).where(eq(tournaments.id, registration.tournamentId)).limit(1);
+    await answerCallbackQuery(query.id);
+    await sendTelegramMessage(chatId, `Отменить заявку на «${escapeHtml(t?.title ?? "турнир") }»?\nЧтобы вернуться, потребуется подать новую заявку.`, { buttons: [
+      [{ text: "Да, отменить заявку", callback_data: `cancel_confirm:${id}` }],
+      [{ text: "Нет, оставляем", callback_data: "cancel_keep" }],
+    ] });
+    return;
+  }
+  await db.delete(registrations).where(and(eq(registrations.id, id), inArray(registrations.status, ["pending", "approved", "rejected"])));
   await answerCallbackQuery(query.id, "Отозвано");
   await editMessageText(chatId, query.message.message_id, "✅ Заявка отозвана.", {
     removeButtons: true,
@@ -704,11 +803,15 @@ async function handleConfirmAttendCallback(
     return;
   }
 
+  if (registration.status !== "approved") {
+    await answerCallbackQuery(query.id, "Статус заявки изменился. Откройте «Мои заявки».");
+    return;
+  }
   await answerCallbackQuery(query.id, "Отлично, ждём вас!");
   await editMessageText(
     chatId,
     query.message.message_id,
-    `${query.message.text ?? ""}\n\n✅ Участие подтверждено`,
+    `${escapeHtml(query.message.text ?? "")}\n\n✅ Участие подтверждено`,
     { removeButtons: true },
   );
 }
@@ -735,15 +838,20 @@ async function handleAdminCancelCallback(
     return;
   }
 
+  if (registration.status === "playing" || registration.status === "eliminated") {
+    await answerCallbackQuery(query.id, "Турнир уже начался — используйте панель организатора");
+    return;
+  }
+
   await db.delete(registrations).where(eq(registrations.id, id));
   await answerCallbackQuery(query.id, "Отменено");
 
   const decidedBy = query.from.first_name ?? query.from.username ?? "";
-  const originalText = query.message.text ?? "";
+  const originalText = escapeHtml(query.message.text ?? "");
   await editMessageText(
     query.message.chat.id,
     query.message.message_id,
-    `${originalText}\n\n✅ Отменено${decidedBy ? ` — ${decidedBy}` : ""}`,
+    `${originalText}\n\n✅ Отменено${decidedBy ? ` — ${escapeHtml(decidedBy)}` : ""}`,
     { removeButtons: true },
   );
 
@@ -771,15 +879,21 @@ async function handleApplyCallback(
   if (action === "abort") {
     pendingApplications.delete(chatId);
     await answerCallbackQuery(query.id, "Отменено");
-    await editMessageText(chatId, query.message.message_id, "Отменено.", { removeButtons: true });
+    await editMessageText(chatId, query.message.message_id, "Заполнение заявки отменено.", { removeButtons: true });
+    await sendTelegramMessage(chatId, "Выберите действие в меню.", { replyKeyboard: MAIN_MENU_KEYBOARD });
     return;
   }
 
+  const current = pendingApplications.get(chatId);
+  if (!current || current.step !== "consent" || current.summaryMessageId !== query.message.message_id) {
+    await answerCallbackQuery(query.id, "Эта кнопка устарела. Используйте последнюю заявку или начните заново.");
+    return;
+  }
   if (action === "restart") {
     const state = pendingApplications.get(chatId);
     if (!state) return;
     await answerCallbackQuery(query.id);
-    await editMessageText(chatId, query.message.message_id, query.message.text ?? "", {
+    await editMessageText(chatId, query.message.message_id, escapeHtml(query.message.text ?? ""), {
       removeButtons: true,
     });
     await startApplication(chatId, state.tournamentId, true);
@@ -787,7 +901,7 @@ async function handleApplyCallback(
   }
 
   await answerCallbackQuery(query.id, "Отправляем…");
-  await editMessageText(chatId, query.message.message_id, query.message.text ?? "", {
+  await editMessageText(chatId, query.message.message_id, escapeHtml(query.message.text ?? ""), {
     removeButtons: true,
   });
   await confirmApplication(chatId, query.from.username);
@@ -822,6 +936,20 @@ async function handleCallbackQuery(update: TelegramUpdate) {
     return;
   }
 
+  if (query.message.chat.id < 0 && !/^(approve|reject|admin_cancel|participants_show):/.test(query.data)) {
+    await answerCallbackQuery(query.id, "Откройте личный чат с ботом");
+    return;
+  }
+  if (query.data === "cancel_keep") {
+    await answerCallbackQuery(query.id, "Заявка сохранена");
+    await editMessageText(query.message.chat.id, query.message.message_id, "Заявка сохранена. Ждём вас!", { removeButtons: true });
+    return;
+  }
+  const confirmedCancel = /^cancel_confirm:(\d+)$/.exec(query.data);
+  if (confirmedCancel) {
+    await handleCancelCallback(query, Number(confirmedCancel[1]), true);
+    return;
+  }
   const cancelMatch = /^cancel:(\d+)$/.exec(query.data);
   if (cancelMatch) {
     await handleCancelCallback(query, Number(cancelMatch[1]));
@@ -866,7 +994,7 @@ async function handleCallbackQuery(update: TelegramUpdate) {
   }
 }
 
-async function handleUpdate(update: TelegramUpdate) {
+export async function handleUpdate(update: TelegramUpdate) {
   if (update.callback_query) {
     await handleCallbackQuery(update);
     return;
@@ -879,6 +1007,7 @@ let running = false;
 export function startTelegramBot() {
   if (running || !process.env.TELEGRAM_BOT_TOKEN) return;
   running = true;
+  configureMiniAppMenu().catch((err) => console.error("[telegram] mini app menu setup failed:", err));
 
   let offset = 0;
   (async function poll() {

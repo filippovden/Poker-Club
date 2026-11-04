@@ -4,11 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import {
-  cancelRegistrationAction,
-  lookupRegistrationsAction,
-  type LookupResultItem,
-} from "@/lib/actions/registrations";
+import { lookupRegistrationsAction, type LookupResultItem } from "@/lib/actions/registrations";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "На рассмотрении",
@@ -32,22 +28,6 @@ function formatDate(iso: string) {
 
 function ResultCard({ item }: { item: LookupResultItem }) {
   const { registration: r, tournament: t } = item;
-  const [cancelled, setCancelled] = useState(false);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const cancellable = r.status === "pending" || r.status === "approved";
-
-  async function handleCancel() {
-    setPending(true);
-    const res = await cancelRegistrationAction(r.cancelToken);
-    setPending(false);
-    if (res.error) {
-      setError(res.error);
-      return;
-    }
-    setCancelled(true);
-  }
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
@@ -65,17 +45,10 @@ function ResultCard({ item }: { item: LookupResultItem }) {
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">Итоговое место: {r.place}</p>
       )}
 
-      {cancelled ? (
-        <p className="mt-4 text-xs text-[var(--muted-foreground)]">Заявка отозвана.</p>
-      ) : (
-        cancellable && (
-          <div className="mt-4">
-            <Button size="sm" variant="secondary" disabled={pending} onClick={handleCancel}>
-              {pending ? "Отзываем…" : "Отозвать заявку"}
-            </Button>
-            {error && <p className="mt-2 text-xs text-[var(--danger)]">{error}</p>}
-          </div>
-        )
+      {(r.status === "pending" || r.status === "approved") && (
+        <p className="mt-4 text-xs text-[var(--muted-foreground)]">
+          Чтобы отозвать заявку, откройте ссылку из подтверждения регистрации или напишите организатору.
+        </p>
       )}
     </div>
   );
